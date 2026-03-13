@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" fill="none" role="img" aria-label="Trident Store">
+  <!-- Trident Icon -->
+  <g transform="translate(4, 4)">
+    <!-- Center prong (tallest) -->
+    <polygon points="26,2 22,12 30,12" fill="#7c7c8a"/>
+    <rect x="24.5" y="11" width="3" height="12" fill="#7c7c8a"/>
+
+    <!-- Left prong -->
+    <polygon points="14,8 11,16 17,16" fill="#7c7c8a"/>
+    <rect x="12.5" y="15" width="2.5" height="7" fill="#7c7c8a"/>
+
+    <!-- Right prong -->
+    <polygon points="38,8 35,16 41,16" fill="#7c7c8a"/>
+    <rect x="36.5" y="15" width="2.5" height="7" fill="#7c7c8a"/>
+
+    <!-- Crossbar / collar connecting all three prongs -->
+    <rect x="11" y="21" width="30" height="3" rx="0.5" fill="#9494a2"/>
+
+    <!-- Left curve down and into stem -->
+    <path d="M13.75 24 C13.75 30 22 34 26 34" stroke="#7c7c8a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <!-- Right curve down and into stem -->
+    <path d="M38.25 24 C38.25 30 30 34 26 34" stroke="#7c7c8a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Stem -->
+    <rect x="24.5" y="33" width="3" height="12" fill="#7c7c8a"/>
+
+    <!-- Base / foot of trident -->
+    <rect x="20" y="44" width="12" height="2.5" rx="1" fill="#7c7c8a"/>
+  </g>
+
+  <!-- Divider line -->
+  <rect x="60" y="10" width="1.5" height="40" rx="0.75" fill="#d1d5db"/>
+
+  <!-- Wordmark: TRIDENT -->
+  <text
+    x="72"
+    y="32"
+    font-family="'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif"
+    font-size="19"
+    font-weight="800"
+    letter-spacing="2"
+    fill="#111827"
+    dominant-baseline="middle"
+  >TRIDENT</text>
+
+  <!-- Wordmark: STORE -->
+  <text
+    x="72"
+    y="46"
+    font-family="'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif"
+    font-size="10"
+    font-weight="400"
+    letter-spacing="5"
+    fill="#6b7280"
+    dominant-baseline="middle"
+  >STORE</text>
+</svg>
