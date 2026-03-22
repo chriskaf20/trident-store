@@ -49,7 +49,7 @@ export default function NewProductPage() {
                 {/* Pricing */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label htmlFor="price" className="text-sm font-bold uppercase tracking-widest text-slate-500">Current Price ($) *</label>
+                        <label htmlFor="price" className="text-sm font-bold uppercase tracking-widest text-slate-500">Current Price (TL) *</label>
                         <input
                             id="price"
                             name="price"
@@ -63,7 +63,7 @@ export default function NewProductPage() {
                     </div>
                     <div className="space-y-2">
                         <label htmlFor="original_price" className="text-sm font-bold uppercase tracking-widest text-slate-500">
-                            Original Price ($)
+                            Original Price (TL)
                             <span className="normal-case font-normal ml-2 text-slate-400">(leave blank if no discount)</span>
                         </label>
                         <input

@@ -8,9 +8,19 @@ export default async function AdminProductsPage() {
         .select('*, stores(name, slug)', { count: 'exact' })
         .order('created_at', { ascending: false })
 
-    const { count: totalCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
-    const { count: inStockCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).gt('stock_quantity', 0)
-    const { count: outOfStockCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('stock_quantity', 0)
+    const { count: totalCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+
+    const { count: inStockCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .gt('stock', 0)
+
+    const { count: outOfStockCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('stock', 0)
 
     return (
         <div className="p-8 md:p-12">
@@ -49,7 +59,9 @@ export default async function AdminProductsPage() {
             {/* Products Table */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">All Products ({count || 0})</h3>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                        All Products ({count || 0})
+                    </h3>
                 </div>
                 {products && products.length > 0 ? (
                     <table className="w-full">
@@ -67,8 +79,12 @@ export default async function AdminProductsPage() {
                                 <tr key={product.id} className="border-b border-slate-50 dark:border-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            {product.image_url ? (
-                                                <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-xl object-cover" />
+                                            {product.image ? (
+                                                <img
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    className="w-10 h-10 rounded-xl object-cover"
+                                                />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                                                     <span className="material-symbols-outlined !text-[18px] text-slate-400">image</span>
@@ -81,7 +97,9 @@ export default async function AdminProductsPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 hidden md:table-cell">
-                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{(product.stores as any)?.name || '—'}</p>
+                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            {(product.stores as any)?.name || '—'}
+                                        </p>
                                     </td>
                                     <td className="px-6 py-4 hidden lg:table-cell">
                                         <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full capitalize">
@@ -90,18 +108,23 @@ export default async function AdminProductsPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div>
-                                            <p className="font-bold text-slate-900 dark:text-white text-sm">${Number(product.price).toFixed(2)}</p>
+                                            <p className="font-bold text-slate-900 dark:text-white text-sm">
+                                                {Number(product.price).toLocaleString('en-US')} TL
+                                            </p>
                                             {product.original_price && (
-                                                <p className="text-xs text-slate-400 line-through">${Number(product.original_price).toFixed(2)}</p>
+                                                <p className="text-xs text-slate-400 line-through">
+                                                    {Number(product.original_price).toLocaleString('en-US')} TL
+                                                </p>
                                             )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 hidden md:table-cell">
-                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${(product.stock_quantity || 0) > 0
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                            (product.stock || 0) > 0
                                                 ? 'bg-green-500/10 text-green-600 dark:text-green-400'
                                                 : 'bg-red-500/10 text-red-600 dark:text-red-400'
-                                            }`}>
-                                            {product.stock_quantity || 0}
+                                        }`}>
+                                            {product.stock || 0}
                                         </span>
                                     </td>
                                 </tr>

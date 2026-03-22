@@ -5,18 +5,26 @@ import { Inbox } from 'lucide-react'
 
 export default async function VendorOrdersPage() {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // RLS will ensure the vendor only sees orders associated with their store
-    const { data: orders } = await supabase
+    const { data: store } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .limit(1)
+        .maybeSingle()
+
+    const { data: orders } = store ? await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .order('created_at', { ascending: false })
+        .eq('store_id', store.id)
+        .order('created_at', { ascending: false }) : { data: null }
 
     return (
-        <div className="space-y-8 animate-fade-in">
+        <div className="p-8 md:p-12 space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-                <p className="text-muted-foreground mt-1">Manage customer fulfillments and track offline payments</p>
+                <h1 className="text-3xl font-black uppercase tracking-tighter">Orders</h1>
+                <p className="text-slate-500 font-medium mt-1">Manage customer fulfillments and track offline payments</p>
             </div>
 
             <Card className="border-border/50 shadow-sm overflow-hidden">
@@ -46,28 +54,32 @@ export default async function VendorOrdersPage() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    orders.map((order) => (
+                                    orders.map((order: any) => (
                                         <tr key={order.id} className="hover:bg-secondary/10 transition-colors">
                                             <td className="p-5 font-mono text-xs font-bold text-foreground">
-                                                #{order.id.split('-')[0].toUpperCase()}
+                                                #{order.id.slice(0, 8).toUpperCase()}
                                             </td>
                                             <td className="p-5">
-                                                <div className="font-semibold text-sm">{order.first_name} {order.last_name}</div>
-                                                <div className="text-xs text-muted-foreground mr-6 truncate max-w-[150px]">{order.email}</div>
+                                                <div className="font-semibold text-sm">
+                                                    {order.first_name} {order.last_name}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                    {order.email}
+                                                </div>
                                             </td>
                                             <td className="p-5 text-sm font-medium">
                                                 {order.order_items?.length || 0} item(s)
                                             </td>
                                             <td className="p-5 font-bold text-sm">
-                                                {order.total_amount.toLocaleString()} TL
+                                                {Number(order.total_amount || 0).toLocaleString('en-US')} TL
                                             </td>
                                             <td className="p-5">
                                                 <Badge variant={
-                                                    order.status === 'pending' ? 'outline' :
-                                                        order.status === 'ready' ? 'secondary' :
-                                                            'success'
+                                                    order.status === 'delivered' ? 'success' :
+                                                    order.status === 'cancelled' ? 'destructive' :
+                                                    'outline'
                                                 }>
-                                                    {order.status}
+                                                    {order.status || 'pending'}
                                                 </Badge>
                                             </td>
                                             <td className="p-5 text-sm font-semibold text-right text-muted-foreground">
