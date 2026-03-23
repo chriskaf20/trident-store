@@ -24,7 +24,7 @@ export default async function WishlistPage() {
                 id,
                 name,
                 price,
-                image_url,
+                image,
                 stores (
                     name
                 )
@@ -54,9 +54,9 @@ export default async function WishlistPage() {
                     {wishlist.map((item: any) => (
                         <div key={item.id} className="group flex flex-col gap-4">
                             <Link href={`/products/${item.product_id}`} className="relative aspect-[4/5] overflow-hidden rounded-xl bg-secondary">
-                                {item.products.image_url ? (
+                                {item.products.image ? (
                                     <img
-                                        src={item.products.image_url}
+                                        src={item.products.image}
                                         alt={item.products.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                     />

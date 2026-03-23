@@ -98,8 +98,8 @@ export function FilterDrawer({ isOpen, onClose }: FilterDrawerProps) {
                             className="w-full accent-black dark:accent-white"
                         />
                         <div className="flex justify-between text-sm font-medium mt-2 text-slate-600 dark:text-slate-400">
-                            <span>$0</span>
-                            <span className="font-black text-black dark:text-white">${maxPrice === 500 ? "500+" : maxPrice}</span>
+                            <span>0 TL</span>
+                            <span className="font-black text-black dark:text-white">{maxPrice === 500 ? "500+" : maxPrice} TL</span>
                         </div>
                     </div>
 

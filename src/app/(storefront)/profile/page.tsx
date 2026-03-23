@@ -8,12 +8,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
     const supabase = await createClient()
-
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-        redirect('/auth/login')
-    }
+    if (!user) redirect('/auth/login')
 
     const { data: profile } = await supabase
         .from('profiles')
@@ -33,7 +30,6 @@ export default async function ProfilePage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-    // Determine Role actions
     const isVendor = profile?.role === 'vendor'
     const isAdmin = profile?.role === 'admin'
 
@@ -41,7 +37,7 @@ export default async function ProfilePage() {
         <div className="min-h-screen bg-neutral-50 pt-24 pb-12 text-neutral-900">
             <div className="max-w-5xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-8">
 
-                {/* Profile Sidebar */}
+                {/* Sidebar */}
                 <div className="md:col-span-1 space-y-6">
                     <ProfileForm
                         initialPhoneNumber={profile?.phone_number || null}
@@ -61,7 +57,7 @@ export default async function ProfilePage() {
                     )}
 
                     {isAdmin && (
-                        <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm text-center border-indigo-200">
+                        <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm text-center">
                             <h3 className="font-semibold mb-2">Admin Tools</h3>
                             <Link href="/admin" className="w-full block py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
                                 Access Admin Dashboard
@@ -72,8 +68,6 @@ export default async function ProfilePage() {
 
                 {/* Main Content */}
                 <div className="md:col-span-2 space-y-8">
-
-                    {/* Addresses Section */}
                     <div className="bg-white p-6 md:p-8 rounded-xl border border-neutral-200 shadow-sm">
                         <AddressManager addresses={addresses || []} />
                     </div>
@@ -95,18 +89,22 @@ export default async function ProfilePage() {
                                                 <span className="inline-block px-3 py-1 bg-neutral-100 text-xs font-medium rounded-full capitalize">
                                                     {order.status}
                                                 </span>
-                                                <span className="font-semibold">${order.total_amount_cents ? (order.total_amount_cents / 100).toFixed(2) : '0.00'}</span>
+                                                <span className="font-semibold">
+                                                    {Number(order.total_amount || 0).toLocaleString('en-US')} TL
+                                                </span>
                                             </div>
                                         </div>
 
-                                        {/* Order Items Summary */}
                                         <div className="pt-4 space-y-3">
                                             {order.order_items?.map((item: any) => (
                                                 <div key={item.id} className="flex gap-4 items-center">
-                                                    <div className="w-12 h-12 bg-neutral-100 rounded flex-shrink-0 relative overflow-hidden">
-                                                        {item.product?.images?.[0] && (
-                                                            // eslint-disable-next-line @next/next/no-img-element
-                                                            <img src={item.product.images[0]} alt={item.product.name} className="object-cover w-full h-full" />
+                                                    <div className="w-12 h-12 bg-neutral-100 rounded flex-shrink-0 overflow-hidden">
+                                                        {item.product?.image && (
+                                                            <img
+                                                                src={item.product.image}
+                                                                alt={item.product.name}
+                                                                className="object-cover w-full h-full"
+                                                            />
                                                         )}
                                                     </div>
                                                     <div className="flex-1">
@@ -114,7 +112,7 @@ export default async function ProfilePage() {
                                                         <p className="text-xs text-neutral-500">Qty: {item.quantity}</p>
                                                     </div>
                                                     <div className="text-sm font-medium">
-                                                        ${item.price_cents ? (item.price_cents / 100).toFixed(2) : '0.00'}
+                                                        {Number(item.price || 0).toLocaleString('en-US')} TL
                                                     </div>
                                                 </div>
                                             ))}
@@ -124,12 +122,11 @@ export default async function ProfilePage() {
                             </div>
                         ) : (
                             <div className="text-center py-12 text-neutral-500 bg-neutral-50 rounded-lg border border-neutral-100">
-                                You haven't placed any orders yet.
+                                You have not placed any orders yet.
                             </div>
                         )}
                     </div>
                 </div>
-
             </div>
         </div>
     )

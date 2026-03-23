@@ -111,7 +111,7 @@ export default async function VendorProductsPage() {
                                                     </Link>
                                                     <form action={async () => {
                                                         "use server"
-                                                        const { deleteProduct } = await import('./actions')
+                                                        const { deleteProduct } = await import('../actions')
                                                         await deleteProduct(product.id)
                                                     }}>
                                                         <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500">

@@ -1,4 +1,39 @@
-import Image from "next/image";
+import { writeFileSync, mkdirSync } from 'fs'
+import { join } from 'path'
+
+const dir = join(process.cwd(), 'src', 'app', '(storefront)', 'products', '[id]')
+mkdirSync(dir, { recursive: true })
+
+const actionsContent = `'use server'
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+export async function submitReview(prevState: any, formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'You must be logged in to leave a review.' }
+    const productId = formData.get('productId') as string
+    const rating = parseInt(formData.get('rating') as string)
+    const comment = formData.get('comment') as string
+    if (!productId || !rating || isNaN(rating) || rating < 1 || rating > 5) {
+        return { error: 'Invalid review data.' }
+    }
+    const { data: existingReview } = await supabase
+        .from('reviews').select('id')
+        .eq('product_id', productId)
+        .eq('user_id', user.id)
+        .single()
+    if (existingReview) return { error: 'You have already reviewed this product.' }
+    const { error: insertError } = await supabase
+        .from('reviews')
+        .insert([{ product_id: productId, user_id: user.id, rating, comment: comment || null }])
+    if (insertError) return { error: 'Failed to submit review.' }
+    revalidatePath(\`/products/\${productId}\`)
+    return { success: true }
+}
+`
+
+const pageContent = `import Image from "next/image";
 import { Star, Truck, ArrowLeft, ShieldCheck, User } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
@@ -16,29 +51,14 @@ export default async function ProductDetailPage({
     const unwrappedParams = await params
     const supabase = await createClient()
 
-    const { data: dbProduct, error: productError } = await supabase
+    const { data: dbProduct } = await supabase
         .from('products')
-        .select('*')
+        .select('*, stores!products_store_id_fkey(name, id)')
         .eq('id', unwrappedParams.id)
         .single()
 
-    if (productError) {
-        console.error('[ProductDetailPage] Supabase error:', productError.message, productError.code)
-    }
-
     if (!dbProduct) {
         notFound()
-    }
-
-    // products.store_id is text; stores.id is uuid — join via separate query
-    let storeName = 'Unknown Store'
-    if (dbProduct.store_id) {
-        const { data: storeData } = await supabase
-            .from('stores')
-            .select('name, id')
-            .eq('id', dbProduct.store_id)
-            .single()
-        if (storeData?.name) storeName = storeData.name
     }
 
     const product = {
@@ -49,7 +69,7 @@ export default async function ProductDetailPage({
         description: dbProduct.description || '',
         image: dbProduct.image || '',
         vendorId: dbProduct.store_id,
-        vendorName: storeName,
+        vendorName: (dbProduct.stores as any)?.name || 'Unknown Store',
         stock: dbProduct.stock || 0,
     }
 
@@ -263,3 +283,11 @@ export default async function ProductDetailPage({
         </div>
     )
 }
+`
+
+writeFileSync(join(dir, 'actions.ts'), actionsContent, 'utf8')
+writeFileSync(join(dir, 'page.tsx'), pageContent, 'utf8')
+
+console.log('Files written successfully')
+console.log('actions.ts size:', actionsContent.length, 'bytes')
+console.log('page.tsx size:', pageContent.length, 'bytes')

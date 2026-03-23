@@ -8,9 +8,23 @@ export default async function TrendingPage() {
 
     const { data: products } = await supabase
         .from('products')
-        .select('*, stores(name)')
+        .select('*')
         .eq('is_trending', true)
         .order('created_at', { ascending: false })
+
+    if (products && products.length > 0) {
+        const storeIds = [...new Set(products.map((p: any) => p.store_id).filter(Boolean))];
+        if (storeIds.length > 0) {
+            const { data: storesData } = await supabase.from('stores').select('id, name').in('id', storeIds);
+            if (storesData) {
+                const storeDict: Record<string, string> = {};
+                storesData.forEach(s => { storeDict[s.id] = s.name; });
+                products.forEach((p: any) => {
+                    p.stores = { name: storeDict[p.store_id] };
+                });
+            }
+        }
+    }
 
     return (
         <div className="flex-1 w-full bg-background">
@@ -18,13 +32,13 @@ export default async function TrendingPage() {
             <div className="bg-black text-white py-16 md:py-24 text-center px-4">
                 <div className="max-w-3xl mx-auto space-y-4">
                     <div className="inline-flex items-center gap-2 bg-amber-600 text-white px-4 py-1.5 text-xs font-black uppercase tracking-widest mb-4">
-                        Admin Curated
+                        Curated Picks
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter">
                         Trending
                     </h1>
                     <p className="text-white/70 max-w-xl mx-auto text-lg">
-                        Our editors' picks — the hottest pieces making waves right now.
+                        The hottest pieces making waves right now.
                     </p>
                 </div>
             </div>
@@ -46,7 +60,7 @@ export default async function TrendingPage() {
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                             {products.map(product => {
-                                const imageUrl = (product.images && product.images[0]) || ''
+                                const imageUrl = product.image || ''
                                 const hasDiscount = product.original_price && product.original_price > product.price
                                 return (
                                     <Link key={product.id} href={`/products/${product.id}`} className="group relative bg-white dark:bg-slate-900 block transition-all hover:-translate-y-1">
@@ -66,9 +80,6 @@ export default async function TrendingPage() {
                                                     <span className="bg-red-600 text-white text-[10px] font-black px-2 py-1 uppercase tracking-widest">Sale</span>
                                                 )}
                                             </div>
-                                            <button className="absolute bottom-3 right-3 size-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-black hover:text-amber-600 hover:scale-110 transition-all shadow-sm opacity-0 group-hover:opacity-100">
-                                                <span className="material-symbols-outlined !text-[20px]">favorite</span>
-                                            </button>
                                         </div>
                                         <div className="pt-3 space-y-1">
                                             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
@@ -76,9 +87,9 @@ export default async function TrendingPage() {
                                             </p>
                                             <h3 className="font-bold text-sm text-black dark:text-white line-clamp-1">{product.name}</h3>
                                             <div className="flex items-center gap-2 text-sm">
-                                                <p className="text-amber-600 font-black">${product.price}</p>
+                                                <p className="text-amber-600 font-black">{Number(product.price).toLocaleString('en-US')} TL</p>
                                                 {hasDiscount && (
-                                                    <p className="text-slate-400 line-through text-xs">${product.original_price}</p>
+                                                    <p className="text-slate-400 line-through text-xs">{Number(product.original_price).toLocaleString('en-US')} TL</p>
                                                 )}
                                             </div>
                                         </div>

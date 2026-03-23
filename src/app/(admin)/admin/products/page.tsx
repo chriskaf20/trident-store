@@ -1,12 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
+import { toggleProductTrending } from '../../actions'
 
 export default async function AdminProductsPage() {
     const supabase = await createClient()
 
     const { data: products, count } = await supabase
         .from('products')
-        .select('*, stores(name, slug)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
+
+    if (products && products.length > 0) {
+        const storeIds = [...new Set(products.map((p: any) => p.store_id).filter(Boolean))];
+        if (storeIds.length > 0) {
+            const { data: storesData } = await supabase.from('stores').select('id, name, slug').in('id', storeIds);
+            if (storesData) {
+                const storeDict: Record<string, any> = {};
+                storesData.forEach(s => { storeDict[s.id] = s; });
+                products.forEach((p: any) => {
+                    p.stores = storeDict[p.store_id] || null;
+                });
+            }
+        }
+    }
 
     const { count: totalCount } = await supabase
         .from('products')
@@ -72,6 +87,7 @@ export default async function AdminProductsPage() {
                                 <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 hidden lg:table-cell">Category</th>
                                 <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400">Price</th>
                                 <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 hidden md:table-cell">Stock</th>
+                                <th className="text-left px-6 py-4 text-xs font-bold uppercase tracking-widest text-slate-400 text-center">Trending</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -126,6 +142,22 @@ export default async function AdminProductsPage() {
                                         }`}>
                                             {product.stock || 0}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <form action={toggleProductTrending.bind(null, product.id, !!product.is_trending)}>
+                                            <button 
+                                                type="submit"
+                                                className={`w-12 h-6 rounded-full relative transition-colors ${
+                                                    product.is_trending ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'
+                                                }`}
+                                            >
+                                                <div 
+                                                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                                                        product.is_trending ? 'left-7' : 'left-1'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             ))}

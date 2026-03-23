@@ -1,30 +1,87 @@
 'use client'
 
-import { useActionState } from 'react'
-import { createProduct } from '../actions'
+import { useActionState, useState } from 'react'
+import { createProduct } from '../../actions'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const CATEGORIES = ['Women', 'Men', 'Accessories', 'Kids', 'Sport', 'Casual']
 
 export default function NewProductPage() {
     const [state, formAction] = useActionState(createProduct, null)
+    const [preview, setPreview] = useState<string | null>(null)
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const url = URL.createObjectURL(file)
+            setPreview(url)
+        }
+    }
 
     return (
-        <div className="max-w-2xl space-y-8">
-            <div className="flex items-center gap-4">
-                <Link href="/dashboard/products" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+        <div className="p-8 md:p-12 max-w-2xl">
+            <div className="flex items-center gap-4 mb-8">
+                <Link
+                    href="/dashboard/products"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
                     <span className="material-symbols-outlined">arrow_back</span>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Add New Product</h1>
-                    <p className="text-muted-foreground text-sm mt-0.5">Fill in the details to list a new product in your store.</p>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter">Add New Product</h1>
+                    <p className="text-slate-500 text-sm mt-0.5">Fill in the details to list a new product in your store.</p>
                 </div>
             </div>
 
-            <form action={formAction} className="space-y-6 bg-white dark:bg-slate-950 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <form action={formAction} encType="multipart/form-data" className="space-y-6 bg-white dark:bg-slate-950 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+
+                {/* Product Image Upload */}
+                <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                        Product Image
+                    </label>
+                    <div className="flex flex-col items-center gap-4">
+                        {/* Preview */}
+                        <div className="w-full h-48 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-900 relative">
+                            {preview ? (
+                                <img
+                                    src={preview}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="text-center">
+                                    <span className="material-symbols-outlined !text-4xl text-slate-300 mb-2 block">add_photo_alternate</span>
+                                    <p className="text-sm text-slate-400">Click below to upload an image</p>
+                                    <p className="text-xs text-slate-300 mt-1">JPG, PNG, WebP up to 5MB</p>
+                                </div>
+                            )}
+                        </div>
+                        <label
+                            htmlFor="image"
+                            className="w-full py-3 text-center border-2 border-slate-200 dark:border-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            <span className="material-symbols-outlined !text-[18px]">upload</span>
+                            {preview ? 'Change Image' : 'Upload Image'}
+                        </label>
+                        <input
+                            id="image"
+                            name="image"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleImageChange}
+                            className="hidden"
+                            required
+                        />
+                    </div>
+                </div>
+
                 {/* Product Name */}
                 <div className="space-y-2">
-                    <label htmlFor="name" className="text-sm font-bold uppercase tracking-widest text-slate-500">Product Name *</label>
+                    <label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                        Product Name *
+                    </label>
                     <input
                         id="name"
                         name="name"
@@ -36,7 +93,9 @@ export default function NewProductPage() {
 
                 {/* Description */}
                 <div className="space-y-2">
-                    <label htmlFor="description" className="text-sm font-bold uppercase tracking-widest text-slate-500">Description</label>
+                    <label htmlFor="description" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                        Description
+                    </label>
                     <textarea
                         id="description"
                         name="description"
@@ -49,7 +108,9 @@ export default function NewProductPage() {
                 {/* Pricing */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label htmlFor="price" className="text-sm font-bold uppercase tracking-widest text-slate-500">Current Price (TL) *</label>
+                        <label htmlFor="price" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                            Price (TL) *
+                        </label>
                         <input
                             id="price"
                             name="price"
@@ -57,14 +118,14 @@ export default function NewProductPage() {
                             step="0.01"
                             min="0"
                             required
-                            placeholder="e.g. 49.99"
+                            placeholder="e.g. 499.99"
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                         />
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="original_price" className="text-sm font-bold uppercase tracking-widest text-slate-500">
+                        <label htmlFor="original_price" className="text-xs font-bold uppercase tracking-widest text-slate-500">
                             Original Price (TL)
-                            <span className="normal-case font-normal ml-2 text-slate-400">(leave blank if no discount)</span>
+                            <span className="normal-case font-normal ml-1 text-slate-400">(optional)</span>
                         </label>
                         <input
                             id="original_price"
@@ -72,17 +133,19 @@ export default function NewProductPage() {
                             type="number"
                             step="0.01"
                             min="0"
-                            placeholder="e.g. 89.99"
+                            placeholder="e.g. 899.99"
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                         />
-                        <p className="text-xs text-slate-400">When set higher than current price, a crossed-out "was" price and a Sale badge will appear on the product card.</p>
+                        <p className="text-xs text-slate-400">Set higher than price to show a sale badge.</p>
                     </div>
                 </div>
 
                 {/* Category & Stock */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label htmlFor="category" className="text-sm font-bold uppercase tracking-widest text-slate-500">Category</label>
+                        <label htmlFor="category" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                            Category
+                        </label>
                         <select
                             id="category"
                             name="category"
@@ -95,28 +158,18 @@ export default function NewProductPage() {
                         </select>
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="stock_quantity" className="text-sm font-bold uppercase tracking-widest text-slate-500">Stock Quantity</label>
+                        <label htmlFor="stock" className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                            Stock Quantity
+                        </label>
                         <input
-                            id="stock_quantity"
-                            name="stock_quantity"
+                            id="stock"
+                            name="stock"
                             type="number"
                             min="0"
                             defaultValue={1}
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                         />
                     </div>
-                </div>
-
-                {/* Image URL */}
-                <div className="space-y-2">
-                    <label htmlFor="image_url" className="text-sm font-bold uppercase tracking-widest text-slate-500">Product Image URL</label>
-                    <input
-                        id="image_url"
-                        name="image_url"
-                        type="url"
-                        placeholder="https://..."
-                        className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    />
                 </div>
 
                 {state?.error && (
@@ -134,7 +187,7 @@ export default function NewProductPage() {
                     </Link>
                     <button
                         type="submit"
-                        className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black text-sm font-black uppercase tracking-widest rounded-xl hover:bg-amber-600 transition-colors shadow-lg"
+                        className="flex-1 py-3 bg-foreground text-background text-sm font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg"
                     >
                         Add Product
                     </button>

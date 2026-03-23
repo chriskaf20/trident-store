@@ -10,19 +10,15 @@ export async function createStoreFromApplication() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    // Double check they don't already have one
     const { data: existingStore } = await supabase
         .from('stores')
         .select('id')
         .eq('owner_id', user.id)
         .limit(1)
         .maybeSingle()
-        
-    if (existingStore) {
-        redirect('/dashboard')
-    }
 
-    // Fetch their most recent application
+    if (existingStore) redirect('/dashboard')
+
     const { data: app } = await supabase
         .from('vendor_applications')
         .select('*')
@@ -31,12 +27,12 @@ export async function createStoreFromApplication() {
         .limit(1)
         .single()
 
-    if (!app) {
-        return { error: 'No application found to copy details from.' }
-    }
+    if (!app) return { error: 'No application found.' }
 
-    const baseSlug = (app.store_name || 'my_store').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`;
+    const baseSlug = (app.store_name || 'my_store')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+    const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`
 
     const { error: storeError } = await supabase.from('stores').insert([{
         owner_id: user.id,
@@ -48,34 +44,24 @@ export async function createStoreFromApplication() {
         instagram: app.instagram || ''
     }])
 
-    if (storeError) {
-        console.error('Store creation error:', storeError)
-        return { error: 'Failed to create store: ' + storeError.message }
-    }
+    if (storeError) return { error: 'Failed to create store: ' + storeError.message }
 
     revalidatePath('/dashboard')
-    revalidatePath('/vendor/dashboard')
-    
-    // Explicitly return success and then redirect in the next line or let the caller handle it.
-    // Actually, redirecting here is better to ensure the UI refreshes completely.
     redirect('/dashboard')
 }
 
 const updateStoreSchema = z.object({
-    name: z.string().min(2, "Store name must be at least 2 characters"),
-    description: z.string().min(10, "Description must be at least 10 characters"),
-    city: z.string().min(2, "City must be at least 2 characters"),
-    whatsapp: z.string().min(8, "Valid WhatsApp number is required"),
+    name: z.string().min(2),
+    description: z.string().min(10),
+    city: z.string().min(2),
+    whatsapp: z.string().min(8),
     instagram: z.string().optional(),
 })
 
 export async function updateStoreSettings(formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        console.error('Unauthorized')
-        return
-    }
+    if (!user) return
 
     const validatedFields = updateStoreSchema.safeParse({
         name: formData.get('name'),
@@ -85,29 +71,109 @@ export async function updateStoreSettings(formData: FormData) {
         instagram: formData.get('instagram'),
     })
 
-    if (!validatedFields.success) {
-        console.error('Invalid form data')
-        return
-    }
+    if (!validatedFields.success) return
 
-    const { error } = await supabase
+    await supabase
         .from('stores')
-        .update({
-            name: validatedFields.data.name,
-            description: validatedFields.data.description,
-            city: validatedFields.data.city,
-            whatsapp: validatedFields.data.whatsapp,
-            instagram: validatedFields.data.instagram,
-        })
+        .update(validatedFields.data)
         .eq('owner_id', user.id)
 
-    if (error) {
-        console.error('Update store error:', error)
-        return
+    revalidatePath('/dashboard/settings')
+}
+
+export async function createProduct(prevState: any, formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: store } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .maybeSingle()
+
+    if (!store) return { error: 'Store not found.' }
+
+    // Handle image upload to Supabase Storage
+    let imageUrl = ''
+    const imageFile = formData.get('image') as File
+
+    if (imageFile && imageFile.size > 0) {
+        const fileExt = imageFile.name.split('.').pop()
+        const fileName = `${store.id}/${Date.now()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
+            .from('products')
+            .upload(fileName, imageFile, {
+                contentType: imageFile.type,
+                upsert: false,
+            })
+
+        if (uploadError) {
+            return { error: 'Image upload failed: ' + uploadError.message }
+        }
+
+        const { data: urlData } = supabase.storage
+            .from('products')
+            .getPublicUrl(fileName)
+
+        imageUrl = urlData.publicUrl
     }
 
-    revalidatePath('/dashboard')
-    revalidatePath('/dashboard/settings')
-    
-    return
+    const price = parseFloat(formData.get('price') as string)
+    const originalPriceRaw = formData.get('original_price') as string
+    const originalPrice = originalPriceRaw && originalPriceRaw !== ''
+        ? parseFloat(originalPriceRaw)
+        : null
+    const stock = parseInt(formData.get('stock') as string) || 0
+    const name = formData.get('name') as string
+    const description = formData.get('description') as string || ''
+    const category = formData.get('category') as string || ''
+
+    if (!name || name.length < 2) return { error: 'Product name is required.' }
+    if (!price || price <= 0) return { error: 'Valid price is required.' }
+    if (!imageUrl) return { error: 'Product image is required. Please select a valid image.' }
+
+    const { error: insertError } = await supabase.from('products').insert([{
+        store_id: store.id,
+        name,
+        description,
+        price,
+        original_price: originalPrice,
+        category,
+        stock,
+        image: imageUrl,
+        currency: 'TL',
+    }])
+
+    if (insertError) {
+        return { error: 'Failed to create product: ' + insertError.message }
+    }
+
+    revalidatePath('/', 'layout')
+    redirect('/dashboard/products')
+}
+
+export async function deleteProduct(productId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: store } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .maybeSingle()
+
+    if (!store) return { error: 'Store not found.' }
+
+    await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+        .eq('store_id', store.id)
+
+    revalidatePath('/', 'layout')
 }

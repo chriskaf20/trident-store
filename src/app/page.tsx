@@ -1,9 +1,10 @@
 import { Navbar } from "@/components/storefront/Navbar";
+import { Footer } from "@/components/storefront/Footer";
 import {
   MarqueeTicker,
   HeroSection,
   CuratedCategories,
-  TrendingArrivals,
+  ProductGrid,
   TrustAndFeatures,
 } from "@/components/storefront/home/AnimatedSections";
 import Link from "next/link";
@@ -16,18 +17,52 @@ export default async function Home() {
 
   const { data: dbTrendingProducts } = await supabase
     .from("products")
-    .select("*, stores(name)")
+    .select("*")
     .eq("is_trending", true)
     .limit(4);
 
-  const trendingProducts = (dbTrendingProducts || []).map((product: any) => ({
+  const { data: dbLatestProducts } = await supabase
+    .from("products")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  const allRelevantProducts = [
+    ...(dbTrendingProducts || []),
+    ...(dbLatestProducts || []),
+  ];
+
+  let storeDict: Record<string, string> = {};
+  if (allRelevantProducts.length > 0) {
+    const storeIds = [
+      ...new Set(
+        allRelevantProducts.map((p) => p.store_id).filter(Boolean)
+      ),
+    ];
+    if (storeIds.length > 0) {
+      const { data: storesData } = await supabase
+        .from("stores")
+        .select("id, name")
+        .in("id", storeIds);
+      if (storesData) {
+        storesData.forEach((store) => {
+          storeDict[store.id] = store.name;
+        });
+      }
+    }
+  }
+
+  const mapProduct = (product: any) => ({
     id: product.id,
     name: product.name,
-    vendor: product.stores?.name || "Unknown Store",
+    vendor: storeDict[product.store_id] || "Unknown Store",
     price: Number(product.price).toLocaleString("en-US") + " TL",
     rating: 4.8,
     image: product.image || "",
-  }));
+  });
+
+  const trendingProducts = (dbTrendingProducts || []).map(mapProduct);
+  const latestProducts = (dbLatestProducts || []).map(mapProduct);
 
   const getCategoryCount = async (categoryName: string) => {
     try {
@@ -50,21 +85,21 @@ export default async function Home() {
   const CATEGORIES = [
     {
       name: "Women's Collection",
-      slug: "women",
+      slug: "Women",
       image:
         "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800&auto=format&fit=crop",
       count: `${womenCount.toLocaleString("en-US")} items`,
     },
     {
       name: "Men's Collection",
-      slug: "men",
+      slug: "Men",
       image:
         "https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=800&auto=format&fit=crop",
       count: `${menCount.toLocaleString("en-US")} items`,
     },
     {
       name: "Accessories",
-      slug: "accessories",
+      slug: "Accessories",
       image:
         "https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?q=80&w=800&auto=format&fit=crop",
       count: `${accessoriesCount.toLocaleString("en-US")} items`,
@@ -77,7 +112,22 @@ export default async function Home() {
       <MarqueeTicker />
       <HeroSection />
       <CuratedCategories categories={CATEGORIES} />
-      <TrendingArrivals products={trendingProducts} />
+
+      <ProductGrid
+        title="Discover All Products"
+        subtitle="Fresh Drops"
+        variant="latest"
+        products={latestProducts}
+      />
+
+      {trendingProducts.length > 0 && (
+        <ProductGrid
+          title="Trending Now"
+          subtitle="Popular Picks"
+          variant="trending"
+          products={trendingProducts}
+        />
+      )}
 
       {/* Vendor CTA Section */}
       <section className="px-6 md:px-12 py-24">
@@ -108,109 +158,7 @@ export default async function Home() {
       </section>
 
       <TrustAndFeatures />
-
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-12 px-6 md:px-12 bg-background">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-            <div className="md:col-span-1 flex flex-col gap-4">
-              <span className="font-bold text-lg tracking-tight">Trident Store</span>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Premium fashion marketplace connecting independent creators with
-                style-conscious shoppers worldwide.
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-2">
-                Trusted by vendors globally.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-xs uppercase tracking-widest mb-5 text-muted-foreground">
-                Shop
-              </h4>
-              <ul className="space-y-3 text-sm">
-                <li>
-                  <Link href="/collections/women" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Women
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/collections/men" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Men
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/collections/accessories" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Accessories
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/trending" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Trending Now
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-xs uppercase tracking-widest mb-5 text-muted-foreground">
-                Sell
-              </h4>
-              <ul className="space-y-3 text-sm">
-                <li>
-                  <Link href="/vendor-apply" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Become a Vendor
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/stores" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Browse Stores
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-xs uppercase tracking-widest mb-5 text-muted-foreground">
-                Account
-              </h4>
-              <ul className="space-y-3 text-sm">
-                <li>
-                  <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors">
-                    My Profile
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/cart" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Cart
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/wishlist" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Wishlist
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/login" className="text-muted-foreground hover:text-foreground transition-colors">
-                    Sign In
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-border/50 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
-            <p>&copy; 2026 Trident Store by Mosala. All rights reserved.</p>
-            <div className="flex items-center gap-6">
-              <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-foreground transition-colors">
-                Terms of Service
-              </Link>
-              <Link href="/newsletter" className="hover:text-foreground transition-colors">
-                Newsletter
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

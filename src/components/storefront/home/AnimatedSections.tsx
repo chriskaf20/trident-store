@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Star, Zap, TrendingUp, ShoppingBag, Lock, RotateCcw, Award, HeartHandshake, Truck } from "lucide-react";
+import { ArrowRight, ShieldCheck, Star, Zap, TrendingUp, ShoppingBag, Lock, RotateCcw, Award, HeartHandshake, Truck, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/lib/store";
@@ -139,7 +139,7 @@ export function CuratedCategories({ categories }: {
   categories: { name: string; slug: string; image: string; count: string }[]
 }) {
   return (
-    <section id="categories" className="px-6 md:px-12 py-24 bg-secondary/30">
+    <section id="categories" className="px-6 md:px-12 py-16 bg-secondary/30">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-12">
           <div>
@@ -149,7 +149,7 @@ export function CuratedCategories({ categories }: {
             <p className="text-muted-foreground">Explore our most popular departments.</p>
           </div>
           <Link
-            href="/collections"
+            href="/products"
             className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-muted-foreground transition-colors group"
           >
             View all{" "}
@@ -164,8 +164,8 @@ export function CuratedCategories({ categories }: {
               transition={{ duration: 0.5, delay: idx * 0.1 }}
               key={category.name}
             >
-              <Link href={`/collections/${category.slug}`}>
-                <div className="group relative h-[420px] rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500">
+              <Link href={`/products?category=${category.slug}`}>
+                <div className="group relative h-[280px] rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500">
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors duration-500 z-10" />
                   <Image
                     src={category.image}
@@ -193,7 +193,17 @@ export function CuratedCategories({ categories }: {
   );
 }
 
-export function TrendingArrivals({ products }: { products: any[] }) {
+export function ProductGrid({
+  title,
+  subtitle,
+  variant = "latest",
+  products
+}: {
+  title: string;
+  subtitle?: string;
+  variant?: "latest" | "trending";
+  products: any[]
+}) {
   const addItem = useCartStore((state) => state.addItem);
 
   const handleAddToCart = (product: any) => {
@@ -212,15 +222,21 @@ export function TrendingArrivals({ products }: { products: any[] }) {
   if (products.length === 0) return null;
 
   return (
-    <section className="px-6 md:px-12 py-24 max-w-7xl mx-auto">
-      <div className="flex items-center gap-2 mb-2 text-primary/80">
-        <TrendingUp className="w-5 h-5" />
-        <span className="font-semibold tracking-wider text-sm uppercase">Now Trending</span>
-      </div>
-      <div className="flex items-end justify-between mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Latest Arrivals</h2>
+    <section className="px-6 md:px-12 py-16 max-w-7xl mx-auto">
+      {subtitle && (
+        <div className="flex items-center gap-2 mb-2 text-primary/80">
+          {variant === "trending" ? (
+            <TrendingUp className="w-5 h-5" />
+          ) : (
+            <LayoutGrid className="w-5 h-5" />
+          )}
+          <span className="font-semibold tracking-wider text-sm uppercase">{subtitle}</span>
+        </div>
+      )}
+      <div className="flex items-end justify-between mb-8">
+        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">{title}</h2>
         <Link
-          href="/trending"
+          href="/products"
           className="hidden sm:flex items-center gap-2 text-sm font-medium hover:text-muted-foreground transition-colors group"
         >
           See all{" "}

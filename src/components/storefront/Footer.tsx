@@ -379,7 +379,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/auth/register"
+                  href="/auth/signup"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -399,7 +399,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li>
                 <Link
-                  href="#"
+                  href="/about"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -410,7 +410,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/shipping"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -421,7 +421,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/returns"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -432,7 +432,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/contact"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -443,7 +443,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/careers"
                   className="hover:text-amber-600 dark:hover:text-amber-500 transition-colors flex items-center gap-1.5 group"
                 >
                   <span className="material-symbols-outlined !text-[14px] opacity-0 group-hover:opacity-100 transition-opacity text-amber-600">
@@ -487,13 +487,7 @@ export function Footer() {
             </span>
             Quality Curated
           </span>
-          <span className="text-slate-200 dark:text-slate-700">|</span>
-          <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined !text-[16px] text-rose-500">
-              favorite
-            </span>
-            Made in Cyprus
-          </span>
+
         </div>
       </div>
 
@@ -505,16 +499,16 @@ export function Footer() {
             reserved.
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-2 justify-center">
-            <Link href="#" className="hover:text-amber-600 transition-colors">
+            <Link href="/privacy" className="hover:text-amber-600 transition-colors">
               Privacy Policy
             </Link>
-            <Link href="#" className="hover:text-amber-600 transition-colors">
+            <Link href="/terms" className="hover:text-amber-600 transition-colors">
               Terms of Service
             </Link>
-            <Link href="#" className="hover:text-amber-600 transition-colors">
+            <Link href="/cookie" className="hover:text-amber-600 transition-colors">
               Cookie Settings
             </Link>
-            <Link href="#" className="hover:text-amber-600 transition-colors">
+            <Link href="/sitemap" className="hover:text-amber-600 transition-colors">
               Sitemap
             </Link>
           </div>

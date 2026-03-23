@@ -46,7 +46,7 @@ export default async function DiscountCodesPage() {
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="percentage">Percentage (%)</option>
-                            <option value="fixed">Fixed Amount ($)</option>
+                            <option value="fixed">Fixed Amount (TL)</option>
                         </select>
                     </div>
                     <div className="space-y-2">
@@ -62,7 +62,7 @@ export default async function DiscountCodesPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Min Order Amount ($)</label>
+                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Min Order Amount (TL)</label>
                         <input
                             name="min_order_amount"
                             type="number"
@@ -112,8 +112,8 @@ export default async function DiscountCodesPage() {
                                         </div>
                                         <div>
                                             <p className="font-semibold text-sm">
-                                                {code.discount_type === 'percentage' ? `${code.discount_value}% off` : `$${code.discount_value} off`}
-                                                {code.min_order_amount > 0 && <span className="text-slate-400 font-normal ml-2">on orders over ${code.min_order_amount}</span>}
+                                                {code.discount_type === 'percentage' ? `${code.discount_value}% off` : `${code.discount_value} TL off`}
+                                                {code.min_order_amount > 0 && <span className="text-slate-400 font-normal ml-2">on orders over {code.min_order_amount} TL</span>}
                                             </p>
                                             {code.expires_at && (
                                                 <p className={`text-xs mt-0.5 ${isExpired ? 'text-red-500' : 'text-slate-400'}`}>

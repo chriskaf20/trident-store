@@ -11,6 +11,9 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Trident Store | Premium Fashion Marketplace",
   description: "Discover and shop directly from independent fashion creators on Trident Store.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
