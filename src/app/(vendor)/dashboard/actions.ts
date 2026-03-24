@@ -95,56 +95,71 @@ export async function createProduct(prevState: any, formData: FormData) {
 
     if (!store) return { error: 'Store not found.' }
 
-    // Handle image upload to Supabase Storage
-    let imageUrl = ''
-    const imageFile = formData.get('image') as File
-
-    if (imageFile && imageFile.size > 0) {
-        const fileExt = imageFile.name.split('.').pop()
-        const fileName = `${store.id}/${Date.now()}.${fileExt}`
-
-        const { error: uploadError } = await supabase.storage
+    // ── Upload helper ────────────────────────────────────────────────────
+    const uploadImage = async (file: File): Promise<string | null> => {
+        if (!file || file.size === 0) return null
+        const ext = file.name.split('.').pop()
+        const path = `${store.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error } = await supabase.storage
             .from('products')
-            .upload(fileName, imageFile, {
-                contentType: imageFile.type,
-                upsert: false,
-            })
-
-        if (uploadError) {
-            return { error: 'Image upload failed: ' + uploadError.message }
-        }
-
-        const { data: urlData } = supabase.storage
-            .from('products')
-            .getPublicUrl(fileName)
-
-        imageUrl = urlData.publicUrl
+            .upload(path, file, { contentType: file.type, upsert: false })
+        if (error) return null
+        return supabase.storage.from('products').getPublicUrl(path).data.publicUrl
     }
 
-    const price = parseFloat(formData.get('price') as string)
+    // ── Primary image (required) ─────────────────────────────────────────
+    const primaryFile = formData.get('image') as File
+    const imageUrl = await uploadImage(primaryFile)
+    if (!imageUrl) return { error: 'Primary product image is required.' }
+
+    // ── Extra images (optional, up to 7 more) ────────────────────────────
+    const extraFiles = formData.getAll('images') as File[]
+    const extraUrls: string[] = []
+    for (const file of extraFiles) {
+        if (file && file.size > 0) {
+            const url = await uploadImage(file)
+            if (url) extraUrls.push(url)
+        }
+    }
+
+    // ── Scalar fields ────────────────────────────────────────────────────
+    const name             = (formData.get('name') as string || '').trim()
+    const description      = (formData.get('description') as string || '').trim()
+    const category         = (formData.get('category') as string || '').trim()
+
+    const price           = parseFloat(formData.get('price') as string)
     const originalPriceRaw = formData.get('original_price') as string
-    const originalPrice = originalPriceRaw && originalPriceRaw !== ''
-        ? parseFloat(originalPriceRaw)
-        : null
-    const stock = parseInt(formData.get('stock') as string) || 0
-    const name = formData.get('name') as string
-    const description = formData.get('description') as string || ''
-    const category = formData.get('category') as string || ''
+    const originalPrice   = originalPriceRaw ? parseFloat(originalPriceRaw) : null
+    const stock           = parseInt(formData.get('stock') as string) || 0
 
+
+    // ── JSON array fields ────────────────────────────────────────────────
+    let sizes: string[] = []
+    let colors: { name: string; hex: string }[] = []
+    let tags: string[] = []
+    try { sizes  = JSON.parse(formData.get('sizes') as string || '[]') } catch {}
+    try { colors = JSON.parse(formData.get('colors') as string || '[]') } catch {}
+    try { tags   = JSON.parse(formData.get('tags') as string || '[]') } catch {}
+
+    // ── Validation ───────────────────────────────────────────────────────
     if (!name || name.length < 2) return { error: 'Product name is required.' }
-    if (!price || price <= 0) return { error: 'Valid price is required.' }
-    if (!imageUrl) return { error: 'Product image is required. Please select a valid image.' }
+    if (!price || price <= 0)     return { error: 'Valid price is required.' }
 
+    // ── Insert ───────────────────────────────────────────────────────────
     const { error: insertError } = await supabase.from('products').insert([{
-        store_id: store.id,
+        store_id:          store.id,
         name,
         description,
-        price,
-        original_price: originalPrice,
         category,
+        price,
+        original_price:    originalPrice,
         stock,
-        image: imageUrl,
-        currency: 'TL',
+        image:             imageUrl,
+        images:            extraUrls.length > 0 ? extraUrls : null,
+        sizes:             sizes.length > 0 ? sizes : null,
+        colors:            colors.length > 0 ? colors : null,
+        tags:              tags.length > 0 ? tags : null,
+        currency:          'TL',
     }])
 
     if (insertError) {

@@ -10,10 +10,17 @@ interface ReviewFormProps {
     productId: string
 }
 
+const FIT_OPTIONS = [
+    { value: 'runs_small', label: 'Runs Small' },
+    { value: 'true_to_size', label: 'True to Size' },
+    { value: 'runs_large', label: 'Runs Large' },
+] as const
+
 export function ReviewForm({ productId }: ReviewFormProps) {
     const [state, formAction] = useActionState(submitReview, null)
     const [rating, setRating] = useState(0)
     const [hoverRating, setHoverRating] = useState(0)
+    const [fitRating, setFitRating] = useState<string>('')
 
     if (state?.success) {
         return (
@@ -30,7 +37,9 @@ export function ReviewForm({ productId }: ReviewFormProps) {
 
             <input type="hidden" name="productId" value={productId} />
             <input type="hidden" name="rating" value={rating} />
+            <input type="hidden" name="fitRating" value={fitRating} />
 
+            {/* Star Rating */}
             <div className="mb-4">
                 <p className="text-sm font-semibold mb-2">Overall Rating *</p>
                 <div className="flex gap-1" onMouseLeave={() => setHoverRating(0)}>
@@ -56,9 +65,32 @@ export function ReviewForm({ productId }: ReviewFormProps) {
                 {rating === 0 && <p className="text-xs text-muted-foreground mt-1">Please select a rating</p>}
             </div>
 
+            {/* Fit Rating */}
+            <div className="mb-4">
+                <p className="text-sm font-semibold mb-2">How did it fit? <span className="font-normal text-muted-foreground">(Optional)</span></p>
+                <div className="flex gap-2">
+                    {FIT_OPTIONS.map((opt) => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setFitRating(fitRating === opt.value ? '' : opt.value)}
+                            className={cn(
+                                'flex-1 py-2 px-2 text-xs font-medium rounded-lg border transition-all',
+                                fitRating === opt.value
+                                    ? 'bg-foreground text-background border-foreground'
+                                    : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground bg-background'
+                            )}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Comment */}
             <div className="mb-6">
                 <label className="text-sm font-semibold mb-2 block" htmlFor="comment">
-                    Comment (Optional)
+                    Comment <span className="font-normal text-muted-foreground">(Optional)</span>
                 </label>
                 <textarea
                     id="comment"

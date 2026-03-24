@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS slug text; UPDATE public.products SET slug = trim(both '-' from regexp_replace(lower(name), '[^a-z0-9]+', '-', 'g')) || '-' || substr(id::text, 1, 8) WHERE slug IS NULL; ALTER TABLE public.products ALTER COLUMN slug SET NOT NULL; CREATE UNIQUE INDEX IF NOT EXISTS products_slug_idx ON public.products(slug);

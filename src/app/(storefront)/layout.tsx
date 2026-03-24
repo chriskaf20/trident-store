@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/storefront/Navbar";
 import { Footer } from "@/components/storefront/Footer";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export default function StorefrontLayout({
     children,
@@ -15,6 +16,7 @@ export default function StorefrontLayout({
             </main>
 
             <Footer />
+            <ToastProvider />
         </div>
     );
 }
