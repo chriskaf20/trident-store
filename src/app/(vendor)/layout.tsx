@@ -15,22 +15,17 @@ export default async function VendorLayout({
         redirect('/auth/login')
     }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+    const [
+        { data: profile },
+        { data: store }
+    ] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', user.id).single(),
+        supabase.from('stores').select('*').eq('owner_id', user.id).limit(1).maybeSingle()
+    ])
 
     if (profile?.role !== 'vendor') {
         redirect('/')
     }
-
-    const { data: store } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('owner_id', user.id)
-        .limit(1)
-        .maybeSingle()
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden text-slate-900 dark:text-slate-100 font-sans">

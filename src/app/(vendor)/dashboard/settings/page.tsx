@@ -4,7 +4,6 @@ import { EmptyStoreState } from '@/components/dashboard/EmptyStoreState'
 import { redirect } from 'next/navigation'
 
 export default async function VendorSettingsPage() {
-    console.log('SETTINGS PAGE HIT')
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/auth/login')

@@ -73,12 +73,14 @@ export function Navbar() {
                                 />
                             </Link>
 
-                            <nav className="hidden md:flex items-center gap-5">
+                            <nav className="hidden lg:flex items-center gap-5">
                                 <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/products?category=Men">Men</Link>
                                 <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/products?category=Women">Women</Link>
                                 <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/products?category=Accessories">Accessories</Link>
                                 <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/trending">Trending</Link>
-                                {userProfile?.role === 'vendor' ? (
+                                {userProfile?.role === 'admin' ? (
+                                    <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/admin/dashboard">Admin Dashboard</Link>
+                                ) : userProfile?.role === 'vendor' ? (
                                     <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/dashboard">Vendor Dashboard</Link>
                                 ) : (
                                     <Link className="text-sm font-black text-black dark:text-white uppercase tracking-widest hover:text-amber-600 transition-colors" href="/vendor-apply">Become a Vendor</Link>
@@ -156,7 +158,7 @@ export function Navbar() {
 
                             {/* Mobile Menu Toggle */}
                             <button
-                                className="md:hidden p-2.5 text-black dark:text-white hover:text-amber-600"
+                                className="lg:hidden p-2.5 text-black dark:text-white hover:text-amber-600"
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             >
                                 <span className="material-symbols-outlined !text-[24px]">{isMobileMenuOpen ? "close" : "menu"}</span>
@@ -167,7 +169,7 @@ export function Navbar() {
 
                 {/* Mobile Menu */}
                 {isMobileMenuOpen && (
-                    <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 space-y-1 animate-in slide-in-from-top-2">
+                    <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 space-y-1 animate-in slide-in-from-top-2">
                         {/* Mobile Search */}
                         <form onSubmit={handleSearch} className="flex items-center border border-slate-200 dark:border-slate-700 px-3 py-2 mb-3">
                             <span className="material-symbols-outlined text-black dark:text-white !text-xl mr-2">search</span>
@@ -187,7 +189,10 @@ export function Navbar() {
                             { href: "/products?category=Women", label: "Women" },
                             { href: "/products?category=Accessories", label: "Accessories" },
                             { href: "/trending", label: "Trending" },
-                            { href: userProfile?.role === 'vendor' ? "/dashboard" : "/vendor-apply", label: userProfile?.role === 'vendor' ? "Vendor Dashboard" : "Become a Vendor" },
+                            { 
+                                href: userProfile?.role === 'admin' ? "/admin/dashboard" : userProfile?.role === 'vendor' ? "/dashboard" : "/vendor-apply", 
+                                label: userProfile?.role === 'admin' ? "Admin Dashboard" : userProfile?.role === 'vendor' ? "Vendor Dashboard" : "Become a Vendor" 
+                            },
                         ].map(({ href, label }) => (
                             <Link
                                 key={href}

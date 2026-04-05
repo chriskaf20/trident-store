@@ -15,20 +15,17 @@ export default async function AdminLayout({
         redirect('/auth/login')
     }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+    const [
+        { data: profile },
+        { count: pendingApplicationsCount }
+    ] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', user.id).single(),
+        supabase.from('vendor_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+    ])
 
     if (profile?.role !== 'admin') {
         redirect('/')
     }
-
-    const { count: pendingApplicationsCount } = await supabase
-        .from('vendor_applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden font-sans">

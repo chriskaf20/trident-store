@@ -10,6 +10,9 @@ export async function createStoreFromApplication() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
+
     const { data: existingStore } = await supabase
         .from('stores')
         .select('id')
@@ -63,6 +66,9 @@ export async function updateStoreSettings(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'vendor') return
+
     const validatedFields = updateStoreSchema.safeParse({
         name: formData.get('name'),
         description: formData.get('description'),
@@ -85,6 +91,9 @@ export async function createProduct(prevState: any, formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
 
     const { data: store } = await supabase
         .from('stores')
@@ -174,6 +183,9 @@ export async function deleteProduct(productId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
 
     const { data: store } = await supabase
         .from('stores')

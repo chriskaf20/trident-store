@@ -15,17 +15,13 @@ export const revalidate = 3600;
 export default async function Home() {
   const supabase = await createClient();
 
-  const { data: dbTrendingProducts } = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_trending", true)
-    .limit(4);
-
-  const { data: dbLatestProducts } = await supabase
-    .from("products")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(8);
+  const [
+    { data: dbTrendingProducts },
+    { data: dbLatestProducts }
+  ] = await Promise.all([
+    supabase.from("products").select("*").eq("is_trending", true).limit(4),
+    supabase.from("products").select("*").order("created_at", { ascending: false }).limit(8)
+  ]);
 
   const allRelevantProducts = [
     ...(dbTrendingProducts || []),
@@ -57,7 +53,7 @@ export default async function Home() {
     name: product.name,
     vendor: storeDict[product.store_id] || "Unknown Store",
     price: Number(product.price).toLocaleString("en-US") + " TL",
-    rating: 4.8,
+    rating: product.rating || 0,
     image: product.image || "",
   });
 

@@ -11,7 +11,7 @@ export default function SpringCollectionPage() {
             {/* Top Promo Bar */}
             <div className="bg-primary text-primary-foreground py-2 px-4 text-center text-xs sm:text-sm font-medium flex items-center justify-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                SPRING SALE: Up to 50% Off Selected Lines. Free shipping on orders over $150.
+                SPRING SALE: Up to 50% Off Selected Lines. Free shipping on orders over 150 TL.
                 <Link href="#" className="underline font-bold ml-2">Shop Sale</Link>
             </div>
 
@@ -194,8 +194,8 @@ export default function SpringCollectionPage() {
                                 <p className="text-xs text-muted-foreground uppercase font-semibold mb-1">Studio Luxe</p>
                                 <h3 className="font-semibold text-lg hover:text-primary transition-colors mb-2 line-clamp-1">Pleated Midi Dress</h3>
                                 <div className="mt-auto flex items-center gap-3">
-                                    <p className="text-red-500 font-bold text-xl">$89.00</p>
-                                    <p className="text-muted-foreground text-sm line-through decoration-muted-foreground/50">$149.00</p>
+                                    <p className="text-red-500 font-bold text-xl">89.00 TL</p>
+                                    <p className="text-muted-foreground text-sm line-through decoration-muted-foreground/50">149.00 TL</p>
                                 </div>
                             </div>
                         </div>
@@ -221,8 +221,8 @@ export default function SpringCollectionPage() {
                                     <p className="text-xs text-muted-foreground uppercase font-semibold mb-1">Brand {item}</p>
                                     <h3 className="font-semibold text-lg hover:text-primary transition-colors mb-2 line-clamp-1">Sample Product {item}</h3>
                                     <div className="mt-auto flex items-center gap-3">
-                                        <p className="text-red-500 font-bold text-xl">$59.00</p>
-                                        <p className="text-muted-foreground text-sm line-through decoration-muted-foreground/50">$85.00</p>
+                                        <p className="text-red-500 font-bold text-xl">59.00 TL</p>
+                                        <p className="text-muted-foreground text-sm line-through decoration-muted-foreground/50">85.00 TL</p>
                                     </div>
                                 </div>
                             </div>
@@ -253,7 +253,7 @@ export default function SpringCollectionPage() {
                                 <div className="mt-6">
                                     <p className="text-sm text-muted-foreground">Trending Item</p>
                                     <h3 className="text-lg font-medium text-foreground mt-1">Trendy Top {item}</h3>
-                                    <p className="mt-2 text-primary font-bold text-lg">$45.00</p>
+                                    <p className="mt-2 text-primary font-bold text-lg">45.00 TL</p>
                                 </div>
                             </div>
                         ))}

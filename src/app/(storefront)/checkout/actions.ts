@@ -73,7 +73,10 @@ export async function placeOfflineOrder(formData: FormData, cartItems: CartItem[
     }
 
     // Grab the form fields
-    const addressLine = formData.get('address') as string
+    const addressLine = (formData.get('address') as string || '').trim()
+    if (!addressLine) {
+        throw new Error('Address is required. Please provide a valid delivery address.')
+    }
     const apartmentNumber = (formData.get('apartmentNumber') as string) || null
     const fullAddress = apartmentNumber ? `${addressLine}, ${apartmentNumber}` : addressLine
 
