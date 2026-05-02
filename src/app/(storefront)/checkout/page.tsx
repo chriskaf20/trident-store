@@ -3,37 +3,50 @@
 import { useCartStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { placeOfflineOrder } from './actions'
+import { placeOrder } from './actions'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Image from 'next/image'
 import { MapPin, Truck } from 'lucide-react'
-import { PromoCodeForm } from '@/components/storefront/PromoCodeForm'
 import { createClient } from '@/lib/supabase/client'
+import { PromoCodeForm } from '@/components/storefront/PromoCodeForm'
 
 export default function CheckoutPage() {
     const { items, cartTotal, cartFinalTotal, discount, clearCart } = useCartStore()
     const router = useRouter()
     const [mounted, setMounted] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    // Form field state
+    const [deliveryMethod, setDeliveryMethod] = useState('pickup')
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [address, setAddress] = useState('')
+    const [phone, setPhone] = useState('')
+    const [apartmentNumber, setApartmentNumber] = useState('')
+    const [mapLink, setMapLink] = useState('')
 
     // Profile address state
     const [profileAddress, setProfileAddress] = useState<any>(null)
     const [useProfileAddress, setUseProfileAddress] = useState(false)
-
-    // Form field state (for pre-fill from profile)
-    const [firstName, setFirstName] = useState('')
-    const [lastName, setLastName] = useState('')
-    const [address, setAddress] = useState('')
-    const [apartmentNumber, setApartmentNumber] = useState('')
-    const [mapLink, setMapLink] = useState('')
 
     useEffect(() => {
         setMounted(true)
         if (items.length === 0 && mounted) {
             router.push('/')
         }
+
+        // Check auth
+        const checkAuth = async () => {
+            const supabase = createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                router.push('/auth/login?redirect=/checkout')
+            }
+        }
+        checkAuth()
 
         // Fetch user profile & saved address
         const fetchProfile = async () => {
@@ -43,7 +56,7 @@ export default function CheckoutPage() {
 
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('full_name, phone, avatar_url')
+                .select('full_name, phone_number, avatar_url')
                 .eq('id', user.id)
                 .single()
 
@@ -51,6 +64,7 @@ export default function CheckoutPage() {
                 .from('addresses')
                 .select('*')
                 .eq('user_id', user.id)
+                .order('is_default', { ascending: false })
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single()
@@ -60,56 +74,85 @@ export default function CheckoutPage() {
                 setProfileAddress({
                     firstName: nameParts[0] || '',
                     lastName: nameParts.slice(1).join(' ') || '',
-                    address: addr?.street_address || '',
-                    apartmentNumber: addr?.apartment_number || '',
-                    mapLink: addr?.map_link || '',
+                    phone_number: profile?.phone_number || addr?.phone_number || '',
+                    address: addr?.street || '',
+                    apartmentNumber: addr?.apartment_door || '',
+                    mapLink: addr?.map_location_link || '',
                 })
             }
         }
 
         fetchProfile()
-    }, [items, mounted, router])
+    }, [items, mounted, router, discount])
 
     // When user toggles "use profile address", pre-fill the fields
     const handleToggleProfileAddress = (checked: boolean) => {
-        setUseProfileAddress(checked)
         if (checked && profileAddress) {
+            // Allow pickup without an address (address not required for pickup)
+            if (!profileAddress.address && !profileAddress.firstName && deliveryMethod !== 'pickup') {
+                setError('Your profile does not have a saved address. Please enter it manually.')
+                return
+            }
+            
+            setError(null)
+            setUseProfileAddress(true)
             setFirstName(profileAddress.firstName)
             setLastName(profileAddress.lastName)
-            setAddress(profileAddress.address)
-            setApartmentNumber(profileAddress.apartmentNumber)
-            setMapLink(profileAddress.mapLink)
+            setAddress(profileAddress.address || '')
+            setPhone(profileAddress.phone_number || '')
+            setApartmentNumber(profileAddress.apartmentNumber || '')
+            setMapLink(profileAddress.mapLink || '')
         } else {
+            setUseProfileAddress(false)
             setFirstName('')
             setLastName('')
             setAddress('')
+            setPhone('')
             setApartmentNumber('')
             setMapLink('')
         }
     }
 
-    if (!mounted || items.length === 0) return null
-
-    const handleSubmit = async (formData: FormData) => {
-        setIsSubmitting(true)
+    const handlePlaceOrder = async (e: React.FormEvent) => {
+        e.preventDefault()
         try {
-            await placeOfflineOrder(formData, items, cartTotal(), discount?.code)
-            clearCart()
-        } catch (err) {
-            console.error(err)
+            setIsSubmitting(true)
+            setError(null)
+
+            const formData = new FormData()
+            formData.append('deliveryMethod', deliveryMethod)
+            formData.append('firstName', firstName)
+            formData.append('lastName', lastName)
+            formData.append('address', address)
+            formData.append('phone', phone)
+            formData.append('apartmentNumber', apartmentNumber)
+            formData.append('mapLink', mapLink)
+
+            await placeOrder(formData, items, cartTotal(), discount?.code)
+            // The action will redirect to success page, which clears the cart
+        } catch (err: any) {
+            console.error('Failed to complete order:', err)
+            setError(err.message || 'Failed to complete order. Please contact support.')
+        } finally {
             setIsSubmitting(false)
-            alert('Something went wrong placing the order. Please try again or contact support.')
         }
     }
+
+    if (!mounted || items.length === 0) return null
 
     return (
         <div className="max-w-7xl mx-auto px-6 py-12 md:py-24 animate-fade-in w-full">
             <h1 className="text-4xl font-bold tracking-tight mb-12">Secure Checkout</h1>
 
-            <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
-                {/* Left Col - Forms */}
-                <form action={handleSubmit} className="flex-1 space-y-12">
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
+                    {error}
+                </div>
+            )}
 
+            <form onSubmit={handlePlaceOrder} className="flex flex-col lg:flex-row gap-12 lg:gap-16">
+                {/* Left Col - Forms */}
+                <div className="flex-1 space-y-12">
                     {/* Contact & Delivery Method */}
                     <Card className="border-border/50 shadow-md">
                         <CardHeader className="border-b border-border/50 pb-4 mb-6">
@@ -121,12 +164,26 @@ export default function CheckoutPage() {
                         <CardContent className="space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <label className="relative border border-border/60 hover:border-primary p-4 rounded-xl cursor-pointer transition-all hover:bg-secondary/30 has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
-                                    <input type="radio" name="deliveryMethod" value="pickup" defaultChecked className="absolute top-4 right-4 w-4 h-4 accent-primary" />
+                                    <input 
+                                        type="radio" 
+                                        name="deliveryMethod" 
+                                        value="pickup" 
+                                        checked={deliveryMethod === 'pickup'}
+                                        onChange={(e) => setDeliveryMethod(e.target.value)}
+                                        className="absolute top-4 right-4 w-4 h-4 accent-primary" 
+                                    />
                                     <div className="font-bold mb-1 group-has-[:checked]:text-primary">In-Store Pickup</div>
                                     <div className="text-sm text-muted-foreground">Collect directly from the boutique</div>
                                 </label>
                                 <label className="relative border border-border/60 hover:border-primary p-4 rounded-xl cursor-pointer transition-all hover:bg-secondary/30 has-[:checked]:border-primary has-[:checked]:bg-primary/5 group">
-                                    <input type="radio" name="deliveryMethod" value="cod" className="absolute top-4 right-4 w-4 h-4 accent-primary" />
+                                    <input 
+                                        type="radio" 
+                                        name="deliveryMethod" 
+                                        value="cod" 
+                                        checked={deliveryMethod === 'cod'}
+                                        onChange={(e) => setDeliveryMethod(e.target.value)}
+                                        className="absolute top-4 right-4 w-4 h-4 accent-primary" 
+                                    />
                                     <div className="font-bold mb-1 group-has-[:checked]:text-primary">Cash on Delivery</div>
                                     <div className="text-sm text-muted-foreground">Pay with cash when your package arrives</div>
                                 </label>
@@ -163,25 +220,17 @@ export default function CheckoutPage() {
                             )}
 
                             {useProfileAddress ? (
-                                /* Hidden inputs carry the saved address values on submit */
-                                <>
-                                    <input type="hidden" name="firstName" value={firstName} />
-                                    <input type="hidden" name="lastName" value={lastName} />
-                                    <input type="hidden" name="address" value={address} />
-                                    <input type="hidden" name="apartmentNumber" value={apartmentNumber} />
-                                    <input type="hidden" name="mapLink" value={mapLink} />
-
-                                    {/* Read-only summary of the saved address */}
-                                    <div className="p-4 rounded-xl bg-secondary/40 border border-primary/20 space-y-1 text-sm">
-                                        <p className="font-semibold">{firstName} {lastName}</p>
-                                        {address && <p className="text-muted-foreground">{address}{apartmentNumber ? `, ${apartmentNumber}` : ''}</p>}
-                                        {mapLink && (
-                                            <a href={mapLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" /> View on map
-                                            </a>
-                                        )}
-                                    </div>
-                                </>
+                                /* Read-only summary of the saved address */
+                                <div className="p-4 rounded-xl bg-secondary/40 border border-primary/20 space-y-1 text-sm">
+                                    <p className="font-semibold">{firstName} {lastName}</p>
+                                    {phone && <p className="text-muted-foreground">{phone}</p>}
+                                    {address && <p className="text-muted-foreground">{address}{apartmentNumber ? `, ${apartmentNumber}` : ''}</p>}
+                                    {mapLink && (
+                                        <a href={mapLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" /> View on map
+                                        </a>
+                                    )}
+                                </div>
                             ) : (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -204,10 +253,18 @@ export default function CheckoutPage() {
                                     </div>
 
                                     <Input
+                                        type="tel"
+                                        name="phone"
+                                        placeholder="Phone Number (for delivery contact)"
+                                        required
+                                        value={phone}
+                                        onChange={e => setPhone(e.target.value)}
+                                    />
+                                    <Input
                                         type="text"
                                         name="address"
-                                        placeholder="Address / Apartment Name"
-                                        required
+                                        placeholder={deliveryMethod === 'pickup' ? "Address / Apartment Name (Optional for Pickup)" : "Address / Apartment Name"}
+                                        required={deliveryMethod !== 'pickup'}
                                         value={address}
                                         onChange={e => setAddress(e.target.value)}
                                     />
@@ -238,15 +295,10 @@ export default function CheckoutPage() {
                         </CardContent>
                     </Card>
 
-                    <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        isLoading={isSubmitting}
-                        className="w-full h-16 text-lg tracking-wide rounded-xl shadow-xl"
-                    >
-                        COMPLETE ORDER
+                    <Button type="submit" disabled={isSubmitting} className="w-full text-lg py-6 shadow-xl">
+                        {isSubmitting ? 'Processing...' : 'Place Order Now'}
                     </Button>
-                </form>
+                </div>
 
                 {/* Right Col - Review Summary */}
                 <div className="w-full lg:w-[450px]">
@@ -310,7 +362,7 @@ export default function CheckoutPage() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     )
 }

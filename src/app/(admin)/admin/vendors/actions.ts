@@ -3,23 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { requireAdmin } from '@/lib/auth'
 
 export async function approveVendorApplication(applicationId: string) {
-    const supabase = await createClient()
-
     // Verify caller is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/login')
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-    if (profile?.role !== 'admin') {
-        return { error: 'Unauthorized' }
-    }
+    const { supabase } = await requireAdmin()
 
     // Fetch the application
     const { data: app, error: fetchError } = await supabase
@@ -75,21 +63,8 @@ export async function approveVendorApplication(applicationId: string) {
 }
 
 export async function rejectVendorApplication(applicationId: string) {
-    const supabase = await createClient()
-
     // Verify caller is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/login')
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-    if (profile?.role !== 'admin') {
-        return { error: 'Unauthorized' }
-    }
+    const { supabase } = await requireAdmin()
 
     const { error } = await supabase
         .from('vendor_applications')

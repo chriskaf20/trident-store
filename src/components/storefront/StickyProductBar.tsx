@@ -7,8 +7,10 @@ import { useCartStore } from '@/lib/store'
 
 interface StickyProductBarProps {
     product: {
-        id: string
+        variantId: string
+        productId: string
         name: string
+        productName: string
         price: number
         image: string
         vendorId: string

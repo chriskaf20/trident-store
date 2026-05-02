@@ -85,3 +85,22 @@ export async function signup(prevState: any, formData: FormData) {
     revalidatePath('/', 'layout')
     redirect('/')
 }
+
+export async function resetPassword(prevState: any, formData: FormData) {
+    const supabase = await createClient()
+    const email = formData.get('email') as string
+
+    if (!email) {
+        return { error: 'Email is required' }
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true, message: 'Check your email for the password reset link.' }
+}

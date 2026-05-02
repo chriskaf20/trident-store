@@ -9,7 +9,7 @@ export default async function VendorSettingsPage() {
     if (!user) redirect('/auth/login')
 
     const { data: store } = await supabase
-        .from('stores')
+        .from('vendors')
         .select('*')
         .eq('owner_id', user.id)
         .maybeSingle()
@@ -30,7 +30,10 @@ export default async function VendorSettingsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Settings Form */}
                 <div className="lg:col-span-2">
-                    <form action={updateStoreSettings} className="space-y-6">
+                    <form action={async (formData) => {
+                        'use server';
+                        await updateStoreSettings(formData);
+                    }} className="space-y-6">
                         <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                             <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
                                 <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest">Store Information</h3>

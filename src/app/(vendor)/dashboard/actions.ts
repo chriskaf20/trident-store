@@ -4,83 +4,58 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { productSchema } from '@/lib/schemas'
+import { requireVendor } from '@/lib/supabase/guards'
 
 export async function createStoreFromApplication() {
+    const { user } = await requireVendor()
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
-
-    const { data: existingStore } = await supabase
-        .from('stores')
+    const { data: existingVendor } = await supabase
+        .from('vendors')
         .select('id')
         .eq('owner_id', user.id)
         .limit(1)
         .maybeSingle()
 
-    if (existingStore) redirect('/dashboard')
+    if (existingVendor) redirect('/dashboard')
 
-    const { data: app } = await supabase
-        .from('vendor_applications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-    if (!app) return { error: 'No application found.' }
-
-    const baseSlug = (app.store_name || 'my_store')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
+    const baseSlug = 'my-store'
     const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`
 
-    const { error: storeError } = await supabase.from('stores').insert([{
+    const { error: vendorError } = await supabase.from('vendors').insert([{
         owner_id: user.id,
-        name: app.store_name || 'My Store',
+        name: 'My Store',
         slug: uniqueSlug,
-        description: app.description || 'Welcome to my store!',
-        city: app.city || 'Unknown',
-        whatsapp: app.whatsapp || '',
-        instagram: app.instagram || ''
+        description: 'Welcome to my store!',
     }])
 
-    if (storeError) return { error: 'Failed to create store: ' + storeError.message }
+    if (vendorError) return { error: 'Failed to create vendor profile: ' + vendorError.message }
 
     revalidatePath('/dashboard')
     redirect('/dashboard')
 }
 
-const updateStoreSchema = z.object({
+const updateVendorSchema = z.object({
     name: z.string().min(2),
     description: z.string().min(10),
-    city: z.string().min(2),
-    whatsapp: z.string().min(8),
-    instagram: z.string().optional(),
 })
 
 export async function updateStoreSettings(formData: FormData) {
+    const { user } = await requireVendor()
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'vendor') return
-
-    const validatedFields = updateStoreSchema.safeParse({
+    const validatedFields = updateVendorSchema.safeParse({
         name: formData.get('name'),
         description: formData.get('description'),
-        city: formData.get('city'),
-        whatsapp: formData.get('whatsapp'),
-        instagram: formData.get('instagram'),
     })
 
-    if (!validatedFields.success) return
+    if (!validatedFields.success) {
+        return { error: validatedFields.error.issues[0].message }
+    }
 
     await supabase
-        .from('stores')
+        .from('vendors')
         .update(validatedFields.data)
         .eq('owner_id', user.id)
 
@@ -88,27 +63,23 @@ export async function updateStoreSettings(formData: FormData) {
 }
 
 export async function createProduct(prevState: any, formData: FormData) {
+    const { user } = await requireVendor()
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
-
-    const { data: store } = await supabase
-        .from('stores')
+    const { data: vendor } = await supabase
+        .from('vendors')
         .select('id')
         .eq('owner_id', user.id)
         .limit(1)
         .maybeSingle()
 
-    if (!store) return { error: 'Store not found.' }
+    if (!vendor) return { error: 'Vendor profile not found.' }
 
     // ── Upload helper ────────────────────────────────────────────────────
     const uploadImage = async (file: File): Promise<string | null> => {
         if (!file || file.size === 0) return null
         const ext = file.name.split('.').pop()
-        const path = `${store.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const path = `${vendor.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
         const { error } = await supabase.storage
             .from('products')
             .upload(path, file, { contentType: file.type, upsert: false })
@@ -116,63 +87,67 @@ export async function createProduct(prevState: any, formData: FormData) {
         return supabase.storage.from('products').getPublicUrl(path).data.publicUrl
     }
 
-    // ── Primary image (required) ─────────────────────────────────────────
-    const primaryFile = formData.get('image') as File
-    const imageUrl = await uploadImage(primaryFile)
-    if (!imageUrl) return { error: 'Primary product image is required.' }
+    // ── Images ─────────────────────────────────────────
+    const imageFiles = formData.getAll('images') as File[]
+    const uploadPromises = imageFiles
+        .filter(file => file && file.size > 0)
+        .map(file => uploadImage(file))
+    
+    const imageUrls = (await Promise.all(uploadPromises)).filter(Boolean) as string[]
+    const primaryImageUrl = imageUrls.length > 0 ? imageUrls[0] : null
 
-    // ── Extra images (optional, up to 7 more) ────────────────────────────
-    const extraFiles = formData.getAll('images') as File[]
-    const extraUrls: string[] = []
-    for (const file of extraFiles) {
-        if (file && file.size > 0) {
-            const url = await uploadImage(file)
-            if (url) extraUrls.push(url)
-        }
-    }
-
-    // ── Scalar fields ────────────────────────────────────────────────────
-    const name             = (formData.get('name') as string || '').trim()
-    const description      = (formData.get('description') as string || '').trim()
-    const category         = (formData.get('category') as string || '').trim()
-
-    const price           = parseFloat(formData.get('price') as string)
-    const originalPriceRaw = formData.get('original_price') as string
-    const originalPrice   = originalPriceRaw ? parseFloat(originalPriceRaw) : null
-    const stock           = parseInt(formData.get('stock') as string) || 0
-
-
-    // ── JSON array fields ────────────────────────────────────────────────
-    let sizes: string[] = []
-    let colors: { name: string; hex: string }[] = []
-    let tags: string[] = []
-    try { sizes  = JSON.parse(formData.get('sizes') as string || '[]') } catch {}
-    try { colors = JSON.parse(formData.get('colors') as string || '[]') } catch {}
-    try { tags   = JSON.parse(formData.get('tags') as string || '[]') } catch {}
+    // ── JSON fields ────────────────────────────────────────────────
+    let variants: any[] = []
+    try { variants = JSON.parse(formData.get('variants') as string || '[]') } catch {}
 
     // ── Validation ───────────────────────────────────────────────────────
-    if (!name || name.length < 2) return { error: 'Product name is required.' }
-    if (!price || price <= 0)     return { error: 'Valid price is required.' }
+    const validatedFields = productSchema.safeParse({
+        name: formData.get('name'),
+        description: formData.get('description'),
+        category_id: formData.get('category_id') || null,
+        variants,
+    })
 
-    // ── Insert ───────────────────────────────────────────────────────────
-    const { error: insertError } = await supabase.from('products').insert([{
-        store_id:          store.id,
+    if (!validatedFields.success) {
+        return { error: 'Validation failed: ' + validatedFields.error.issues[0].message }
+    }
+
+    const { name, description, category_id, variants: validatedVariants } = validatedFields.data
+
+    const baseSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+    const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`
+
+    // ── Insert Product ───────────────────────────────────────────────────────────
+    const { data: product, error: insertError } = await supabase.from('products').insert([{
+        vendor_id: vendor.id,
         name,
+        slug,
         description,
-        category,
-        price,
-        original_price:    originalPrice,
-        stock,
-        image:             imageUrl,
-        images:            extraUrls.length > 0 ? extraUrls : null,
-        sizes:             sizes.length > 0 ? sizes : null,
-        colors:            colors.length > 0 ? colors : null,
-        tags:              tags.length > 0 ? tags : null,
-        currency:          'TL',
-    }])
+        category_id,
+        status: 'active',
+    }]).select('id').single()
 
-    if (insertError) {
-        return { error: 'Failed to create product: ' + insertError.message }
+    if (insertError || !product) {
+        return { error: 'Failed to create product: ' + insertError?.message }
+    }
+
+    // ── Insert Variants ───────────────────────────────────────────────────────────
+    const variantInserts = validatedVariants.map(v => ({
+        product_id: product.id,
+        name: v.name,
+        sku: v.sku || `${slug}-${v.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+        price: v.price,
+        stock_quantity: v.stock_quantity,
+        image_url: primaryImageUrl // For simplicity, we assign the primary image to all variants initially
+    }))
+
+    const { error: variantError } = await supabase.from('product_variants').insert(variantInserts)
+
+    if (variantError) {
+        return { error: 'Failed to create product variants: ' + variantError.message }
     }
 
     revalidatePath('/', 'layout')
@@ -180,27 +155,23 @@ export async function createProduct(prevState: any, formData: FormData) {
 }
 
 export async function deleteProduct(productId: string) {
+    const { user } = await requireVendor()
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: 'Unauthorized' }
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'vendor') return { error: 'Unauthorized: Vendor access required' }
-
-    const { data: store } = await supabase
-        .from('stores')
+    const { data: vendor } = await supabase
+        .from('vendors')
         .select('id')
         .eq('owner_id', user.id)
         .limit(1)
         .maybeSingle()
 
-    if (!store) return { error: 'Store not found.' }
+    if (!vendor) return { error: 'Vendor profile not found.' }
 
     await supabase
         .from('products')
         .delete()
         .eq('id', productId)
-        .eq('store_id', store.id)
+        .eq('vendor_id', vendor.id)
 
     revalidatePath('/', 'layout')
 }

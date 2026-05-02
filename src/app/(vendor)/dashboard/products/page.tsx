@@ -10,7 +10,7 @@ export default async function VendorProductsPage() {
     const { data: { user } } = await supabase.auth.getUser()
 
     const { data: store } = await supabase
-        .from('stores')
+        .from('vendors')
         .select('id')
         .eq('owner_id', user?.id)
         .limit(1)
@@ -21,7 +21,7 @@ export default async function VendorProductsPage() {
         const { data } = await supabase
             .from('products')
             .select('*')
-            .eq('store_id', store.id)
+            .eq('vendor_id', store.id)
             .order('created_at', { ascending: false })
         products = data
     }

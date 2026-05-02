@@ -6,8 +6,10 @@ import { ColorSelector } from './ColorSelector'
 import { ProductActionButtons } from './ProductActionButtons'
 
 interface Product {
-    id: string
+    variantId: string
+    productId: string
     name: string
+    productName: string
     price: number
     image: string
     vendorId: string

@@ -120,3 +120,79 @@ export async function deleteAddress(id: string) {
     revalidatePath('/profile')
     return { success: true }
 }
+
+export async function confirmReceipt(orderId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('You must be logged in')
+    }
+
+    // Update the parent order status
+    const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'delivered' })
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+
+    if (orderError) {
+        throw new Error(orderError.message)
+    }
+
+    // Also update all items to delivered
+    const { error: itemsError } = await supabase
+        .from('order_items')
+        .update({ status: 'delivered' })
+        .eq('order_id', orderId)
+
+    if (itemsError) {
+        console.error('Failed to update order items status:', itemsError.message)
+    }
+
+    revalidatePath('/profile')
+    return { success: true }
+}
+export async function cancelOrder(orderId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error('You must be logged in')
+    }
+
+    // Only allow cancellation of pending orders
+    const { data: order } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!order) {
+        throw new Error('Order not found')
+    }
+
+    if (order.status !== 'pending') {
+        throw new Error('Only pending orders can be cancelled')
+    }
+
+    const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+        .eq('user_id', user.id)
+
+    if (orderError) {
+        throw new Error(orderError.message)
+    }
+
+    // Also update all items to cancelled
+    await supabase
+        .from('order_items')
+        .update({ status: 'cancelled' })
+        .eq('order_id', orderId)
+
+    revalidatePath('/profile')
+    return { success: true }
+}

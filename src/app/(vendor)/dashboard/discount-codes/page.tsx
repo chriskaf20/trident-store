@@ -7,29 +7,41 @@ export default async function DiscountCodesPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: store } = await supabase.from('stores').select('id').eq('owner_id', user?.id).single()
+    const { data: store } = await supabase.from('vendors').select('id').eq('owner_id', user?.id).single()
 
     let codes: any[] = []
+    let products: any[] = []
     if (store) {
-        const { data } = await supabase
+        const { data: codesData } = await supabase
             .from('discount_codes')
-            .select('*')
-            .eq('store_id', store.id)
+            .select('*, product:products(id, name)')
+            .eq('vendor_id', store.id)
             .order('created_at', { ascending: false })
-        codes = data ?? []
+        codes = codesData ?? []
+
+        const { data: productsData } = await supabase
+            .from('products')
+            .select('id, name')
+            .eq('vendor_id', store.id)
+            .eq('is_active', true)
+            .order('name', { ascending: true })
+        products = productsData ?? []
     }
 
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">Discount Codes</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Create promotional codes your customers can use at checkout.</p>
+                <p className="text-muted-foreground mt-1 text-sm">Create promotional codes your customers can use at checkout. Optionally scope a code to a specific product.</p>
             </div>
 
             {/* Create Form */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 md:p-8">
                 <h2 className="text-lg font-bold mb-6">Create New Code</h2>
-                <form action={createDiscountCode} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <form action={async (formData) => {
+                    'use server';
+                    await createDiscountCode(formData);
+                }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Code *</label>
                         <input
@@ -74,6 +86,18 @@ export default async function DiscountCodesPage() {
                         />
                     </div>
                     <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Apply To Specific Product (optional)</label>
+                        <select
+                            name="product_id"
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
+                        >
+                            <option value="">— Entire Cart (no restriction) —</option>
+                            {products.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Expiry Date (optional)</label>
                         <input
                             name="expires_at"
@@ -81,8 +105,8 @@ export default async function DiscountCodesPage() {
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
-                    <div className="flex items-end">
-                        <button type="submit" className="w-full py-3 bg-black dark:bg-white text-white dark:text-black font-bold text-sm rounded-xl hover:bg-amber-600 transition-colors">
+                    <div className="flex items-end sm:col-span-2 lg:col-span-3">
+                        <button type="submit" className="w-full sm:w-auto px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-bold text-sm rounded-xl hover:bg-amber-600 transition-colors">
                             Create Code
                         </button>
                     </div>
@@ -115,6 +139,14 @@ export default async function DiscountCodesPage() {
                                                 {code.discount_type === 'percentage' ? `${code.discount_value}% off` : `${code.discount_value} TL off`}
                                                 {code.min_order_amount > 0 && <span className="text-slate-400 font-normal ml-2">on orders over {code.min_order_amount} TL</span>}
                                             </p>
+                                            {code.product && (
+                                                <p className="text-xs text-amber-600 font-medium mt-0.5">
+                                                    🏷️ Only for: {code.product.name}
+                                                </p>
+                                            )}
+                                            {!code.product && (
+                                                <p className="text-xs text-slate-400 mt-0.5">Applies to entire cart</p>
+                                            )}
                                             {code.expires_at && (
                                                 <p className={`text-xs mt-0.5 ${isExpired ? 'text-red-500' : 'text-slate-400'}`}>
                                                     {isExpired ? 'Expired' : `Expires`} {new Date(code.expires_at).toLocaleDateString()}
@@ -148,3 +180,4 @@ export default async function DiscountCodesPage() {
         </div>
     )
 }
+

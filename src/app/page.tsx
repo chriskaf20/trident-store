@@ -15,43 +15,19 @@ export const revalidate = 3600;
 export default async function Home() {
   const supabase = await createClient();
 
+  // Use products_with_stores view to avoid N+1 queries
   const [
     { data: dbTrendingProducts },
     { data: dbLatestProducts }
   ] = await Promise.all([
-    supabase.from("products").select("*").eq("is_trending", true).limit(4),
-    supabase.from("products").select("*").order("created_at", { ascending: false }).limit(8)
+    supabase.from("products_with_stores").select("*").eq("is_trending", true).limit(4),
+    supabase.from("products_with_stores").select("*").order("created_at", { ascending: false }).limit(8)
   ]);
-
-  const allRelevantProducts = [
-    ...(dbTrendingProducts || []),
-    ...(dbLatestProducts || []),
-  ];
-
-  let storeDict: Record<string, string> = {};
-  if (allRelevantProducts.length > 0) {
-    const storeIds = [
-      ...new Set(
-        allRelevantProducts.map((p) => p.store_id).filter(Boolean)
-      ),
-    ];
-    if (storeIds.length > 0) {
-      const { data: storesData } = await supabase
-        .from("stores")
-        .select("id, name")
-        .in("id", storeIds);
-      if (storesData) {
-        storesData.forEach((store) => {
-          storeDict[store.id] = store.name;
-        });
-      }
-    }
-  }
 
   const mapProduct = (product: any) => ({
     id: product.id,
     name: product.name,
-    vendor: storeDict[product.store_id] || "Unknown Store",
+    vendor: product.store_name || "Unknown Store",
     price: Number(product.price).toLocaleString("en-US") + " TL",
     rating: product.rating || 0,
     image: product.image || "",
@@ -60,23 +36,16 @@ export default async function Home() {
   const trendingProducts = (dbTrendingProducts || []).map(mapProduct);
   const latestProducts = (dbLatestProducts || []).map(mapProduct);
 
-  const getCategoryCount = async (categoryName: string) => {
-    try {
-      const { count } = await supabase
-        .from("products")
-        .select("*", { count: "exact", head: true })
-        .eq("category", categoryName);
-      return count || 0;
-    } catch {
-      return 0;
-    }
+  const { data: categoryCounts } = await supabase.rpc('get_category_counts');
+  
+  const getCount = (catName: string) => {
+    const item = (categoryCounts || []).find((c: any) => c.category === catName);
+    return item ? Number(item.count) : 0;
   };
 
-  const [womenCount, menCount, accessoriesCount] = await Promise.all([
-    getCategoryCount("Women"),
-    getCategoryCount("Men"),
-    getCategoryCount("Accessories"),
-  ]);
+  const womenCount = getCount("Women");
+  const menCount = getCount("Men");
+  const accessoriesCount = getCount("Accessories");
 
   const CATEGORIES = [
     {

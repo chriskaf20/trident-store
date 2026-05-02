@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ProfileForm } from './components/ProfileForm'
 import { AddressManager } from './components/AddressManager'
+import { ConfirmReceiptButton } from './components/ConfirmReceiptButton'
+import { CancelOrderButton } from './components/CancelOrderButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +119,18 @@ export default async function ProfilePage() {
                                                 </div>
                                             ))}
                                         </div>
+
+                                        {/* Action buttons based on order status */}
+                                        {order.status === 'shipped' && (
+                                            <div className="mt-4 pt-4 border-t border-neutral-100 flex justify-end">
+                                                <ConfirmReceiptButton orderId={order.id} status={order.status} />
+                                            </div>
+                                        )}
+                                        {order.status === 'pending' && (
+                                            <div className="mt-4 pt-4 border-t border-neutral-100 flex justify-end">
+                                                <CancelOrderButton orderId={order.id} status={order.status} />
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

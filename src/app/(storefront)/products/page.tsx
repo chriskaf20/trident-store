@@ -1,7 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Metadata } from 'next'
 
-export const dynamic = 'force-dynamic'
+export const metadata: Metadata = {
+    title: 'All Products | Trident Store',
+    description: 'Discover unique pieces from independent creators worldwide.',
+}
 
 export default async function ProductsPage(props: {
     searchParams: Promise<{ category?: string; sale?: string; query?: string }>
@@ -9,7 +14,8 @@ export default async function ProductsPage(props: {
     const searchParams = await props.searchParams
     const supabase = await createClient()
 
-    let query = supabase.from('products').select('*')
+    // Use products_with_stores view to avoid N+1 queries
+    let query = supabase.from('products_with_stores').select('*')
 
     if (searchParams.category) {
         query = query.eq('category', searchParams.category)
@@ -19,20 +25,6 @@ export default async function ProductsPage(props: {
     }
 
     const { data: products } = await query.order('created_at', { ascending: false })
-
-    if (products && products.length > 0) {
-        const storeIds = [...new Set(products.map((p: any) => p.store_id).filter(Boolean))];
-        if (storeIds.length > 0) {
-            const { data: storesData } = await supabase.from('stores').select('id, name').in('id', storeIds);
-            if (storesData) {
-                const storeDict: Record<string, string> = {};
-                storesData.forEach(s => { storeDict[s.id] = s.name; });
-                products.forEach((p: any) => {
-                    p.stores = { name: storeDict[p.store_id] };
-                });
-            }
-        }
-    }
 
     return (
         <div className="flex-1 w-full bg-background">
@@ -94,10 +86,12 @@ export default async function ProductsPage(props: {
                                         <div key={product.id} className="group relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 transition-all hover:shadow-xl hover:shadow-primary/5">
                                             <Link href={`/products/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-slate-100 dark:bg-slate-800">
                                                 {imageUrl ? (
-                                                    <img
+                                                    <Image
                                                         alt={product.name}
                                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                                         src={imageUrl}
+                                                        fill
+                                                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 text-xs">No Image</div>

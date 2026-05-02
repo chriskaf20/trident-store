@@ -209,13 +209,15 @@ export function ProductGrid({
   const handleAddToCart = (product: any) => {
     const priceNumeric = parseInt(product.price.replace(/[^\d]/g, ""), 10) || 0;
     addItem({
-      id: `prod_${product.id}`,
+      variantId: product.id,     // product-level fallback (no variant selected from this grid)
+      productId: product.id,
       name: product.name,
+      productName: product.name,
       price: priceNumeric,
       quantity: 1,
       image: product.image,
-      vendorId: product.store_id || product.vendorId || "",
-      vendorName: product.vendor,
+      vendorId: product.vendor_id || product.vendorId || "",
+      vendorName: product.vendor || "",
     });
   };
 

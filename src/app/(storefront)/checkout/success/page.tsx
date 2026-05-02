@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { CheckCircle2 } from 'lucide-react'
+import { ClearCart } from '@/components/storefront/ClearCart'
 
 export default async function CheckoutSuccessPage({ searchParams }: { searchParams: Promise<{ order_id?: string }> }) {
     const resolvedSearchParams = await searchParams;
     return (
         <div className="min-h-[70vh] flex items-center justify-center px-6">
+            <ClearCart />
             <div className="max-w-md w-full text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="flex justify-center mb-8">
                     <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center">

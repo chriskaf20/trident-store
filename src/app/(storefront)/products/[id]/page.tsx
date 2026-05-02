@@ -9,7 +9,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
     const params = await props.params
     const supabase = await createClient()
     const { data: product } = await supabase
-        .from('products')
+        .from('products_with_stores')
         .select('name, short_description, description')
         .eq('id', params.id)
         .single()
@@ -24,9 +24,10 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
     const params = await props.params
     const supabase = await createClient()
 
+    // Use products_with_stores view to get store name in a single query
     const { data: product } = await supabase
-        .from('products')
-        .select('*, stores(name)')
+        .from('products_with_stores')
+        .select('*')
         .eq('id', params.id)
         .single()
 
@@ -41,7 +42,7 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
         price: product.price,
         image: product.image,
         vendorId: product.store_id,
-        vendorName: (product.stores as any)?.name || 'Unknown Store',
+        vendorName: product.store_name || 'Unknown Store',
         stock: product.stock
     }
 
@@ -64,7 +65,7 @@ export default async function ProductDetailPage(props: { params: Promise<{ id: s
                 <div className="flex flex-col">
                     <div className="mb-8 border-b border-border/40 pb-8">
                         <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                            {(product.stores as any)?.name || 'Unknown Store'}
+                            {product.store_name || 'Unknown Store'}
                         </p>
                         <h1 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">
                             {product.name}

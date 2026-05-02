@@ -13,8 +13,8 @@ export async function RelatedProducts({ storeId, currentProductId }: RelatedProd
 
     const { data: products } = await supabase
         .from('products')
-        .select('id, name, price, original_price, image, stock, store_id')
-        .eq('store_id', storeId)
+        .select('id, name, price, original_price, image, stock, vendor_id')
+        .eq('vendor_id', storeId)
         .neq('id', currentProductId)
         .gt('stock', 0)
         .limit(4)
@@ -61,11 +61,13 @@ export async function RelatedProducts({ storeId, currentProductId }: RelatedProd
                                 {/* Quick Add */}
                                 <QuickAddButton
                                     product={{
-                                        id: p.id,
+                                        variantId: p.id, // product-level fallback until variant picker is integrated
+                                        productId: p.id,
                                         name: p.name,
+                                        productName: p.name,
                                         price: p.price,
                                         image: p.image || '',
-                                        vendorId: p.store_id || '',
+                                        vendorId: p.vendor_id || '',
                                         vendorName: '',
                                         stock: p.stock || 0,
                                     }}

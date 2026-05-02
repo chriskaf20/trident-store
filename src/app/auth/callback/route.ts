@@ -20,8 +20,12 @@ export async function GET(request: Request) {
         }
     }
 
+    // Validate redirect URL to prevent open redirect vulnerabilities
+    // It must be a relative path starting with '/' but NOT '//'
+    const isSafeRedirect = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+    
     // URL to redirect to after sign in process completes
-    if (redirectTo) {
+    if (isSafeRedirect) {
         return NextResponse.redirect(`${origin}${redirectTo}`)
     }
 

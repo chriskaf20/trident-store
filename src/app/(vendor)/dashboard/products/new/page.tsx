@@ -1,30 +1,21 @@
 'use client'
 
-import { useActionState, useState, useRef } from 'react'
+import { useActionState, useState, useRef, startTransition } from 'react'
 import { createProduct } from '../../actions'
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-    ImagePlus, X, ChevronDown, Info, Tag, Ruler,
-    Palette, Package, Truck, Search
-} from 'lucide-react'
+import { ImagePlus, X, Info, Box, Plus, Trash2 } from 'lucide-react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { productSchema, type ProductFormValues } from '@/lib/schemas'
+import { toast } from 'sonner'
 
 // ─── Constants ────────────────────────────────────────────────────────────
-const CATEGORIES = ['Women', 'Men', 'Accessories', 'Kids', 'Sport', 'Casual']
-const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'One Size']
-const PRESET_COLORS = [
-    { name: 'Black', hex: '#000000' },
-    { name: 'White', hex: '#FFFFFF' },
-    { name: 'Navy', hex: '#1E3A5F' },
-    { name: 'Red', hex: '#E53E3E' },
-    { name: 'Green', hex: '#276749' },
-    { name: 'Blue', hex: '#3182CE' },
-    { name: 'Yellow', hex: '#ECC94B' },
-    { name: 'Pink', hex: '#FBB6CE' },
-    { name: 'Beige', hex: '#F5F0E8' },
-    { name: 'Grey', hex: '#718096' },
-    { name: 'Brown', hex: '#7B3F00' },
-    { name: 'Purple', hex: '#6B46C1' },
+// TODO: Fetch these dynamically from the database
+const CATEGORIES = [
+    { id: '11111111-1111-1111-1111-111111111111', name: 'Women' },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'Men' },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Accessories' }
 ]
 
 // ─── Reusable field wrapper ───────────────────────────────────────────────
@@ -60,22 +51,26 @@ const textareaCls = inputCls + " resize-none"
 // ─── Page ─────────────────────────────────────────────────────────────────
 export default function NewProductPage() {
     const [state, formAction, isPending] = useActionState(createProduct, null)
+    
+    const { register, control, handleSubmit, formState: { errors } } = useForm<ProductFormValues>({
+        resolver: zodResolver(productSchema),
+        defaultValues: {
+            name: '',
+            description: '',
+            category_id: '',
+            variants: [{ name: 'Default', price: 0, stock_quantity: 0, sku: '' }]
+        }
+    })
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "variants"
+    })
 
     // Image state
     const [imageFiles, setImageFiles] = useState<{ id: string; file: File; url: string }[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
-
-    // Variant state
-    const [selectedSizes, setSelectedSizes] = useState<string[]>([])
-    const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([])
-
-    // Category state
-    const [category, setCategory] = useState('')
-
-    // Tag state
-    const [tags, setTags] = useState<string[]>([])
-    const [tagInput, setTagInput] = useState('')
 
     // ── Image handlers ──
     const addImageFiles = (files: FileList | null) => {
@@ -89,23 +84,25 @@ export default function NewProductPage() {
     }
     const removeImage = (id: string) => setImageFiles(prev => prev.filter(i => i.id !== id))
 
-    // ── Size handlers ──
-    const toggleSize = (s: string) =>
-        setSelectedSizes(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
-
-    // ── Color handlers ──
-    const toggleColor = (c: { name: string; hex: string }) =>
-        setSelectedColors(prev =>
-            prev.find(x => x.name === c.name) ? prev.filter(x => x.name !== c.name) : [...prev, c]
-        )
-
-    // ── Tag handlers ──
-    const addTag = () => {
-        const t = tagInput.trim().toLowerCase().replace(/\s+/g, '-')
-        if (t && !tags.includes(t) && tags.length < 10) {
-            setTags(prev => [...prev, t])
-            setTagInput('')
+    const onFormSubmit = async (data: ProductFormValues) => {
+        if (imageFiles.length === 0) {
+            toast.error('At least one product image is required')
+            return
         }
+
+        const formData = new FormData()
+        formData.append('name', data.name)
+        formData.append('description', data.description)
+        formData.append('category_id', data.category_id)
+        formData.append('variants', JSON.stringify(data.variants))
+
+        imageFiles.forEach((img, idx) => {
+            formData.append('images', img.file)
+        })
+
+        startTransition(() => {
+            formAction(formData)
+        })
     }
 
     return (
@@ -119,11 +116,11 @@ export default function NewProductPage() {
                 </Link>
                 <div>
                     <h1 className="text-2xl font-black uppercase tracking-tighter">Add New Product</h1>
-                    <p className="text-slate-500 text-sm mt-0.5">Fill in the details to list a new product.</p>
+                    <p className="text-slate-500 text-sm mt-0.5">Define your product and its specific SKU variants.</p>
                 </div>
             </div>
 
-            <form action={formAction} encType="multipart/form-data" className="space-y-5">
+            <form onSubmit={handleSubmit(onFormSubmit)} encType="multipart/form-data" className="space-y-5">
 
                 {/* ── 1. Images ── */}
                 <Section icon={<ImagePlus className="w-4 h-4" />} title="Product Images">
@@ -170,128 +167,109 @@ export default function NewProductPage() {
                             ))}
                         </div>
                     )}
-
-                    {/* Hidden file inputs for server action */}
-                    {imageFiles.map((img, idx) => (
-                        <input key={img.id} type="file" name={idx === 0 ? 'image' : 'images'} className="hidden"
-                            ref={el => {
-                                if (el) {
-                                    const dt = new DataTransfer()
-                                    dt.items.add(img.file)
-                                    el.files = dt.files
-                                }
-                            }}
-                        />
-                    ))}
                 </Section>
 
                 {/* ── 2. Basic Info ── */}
-                <Section icon={<Info className="w-4 h-4" />} title="Basic Info">
+                <Section icon={<Info className="w-4 h-4" />} title="Base Product Info">
                     <Field label="Product Name *">
                         <input
-                            name="name" required
-                            placeholder="e.g. Silk Minimalist Gown"
-                            className={inputCls}
+                            {...register('name')}
+                            placeholder="e.g. Classic Cotton T-Shirt"
+                            className={[inputCls, errors.name ? 'border-red-500' : ''].join(' ')}
                         />
+                        {errors.name && <p className="text-xs text-red-500 font-bold">{errors.name.message}</p>}
                     </Field>
 
-                    <Field label="Short Description" hint="Shown below the price — 1–2 punchy sentences.">
-                        <input name="short_description" placeholder="e.g. Effortlessly elegant, made from 100% silk." className={inputCls} />
+                    <Field label="Description">
+                        <textarea
+                            {...register('description')}
+                            rows={4}
+                            placeholder="Describe material, fit, styling tips, occasion..."
+                            className={[textareaCls, errors.description ? 'border-red-500' : ''].join(' ')}
+                        />
+                        {errors.description && <p className="text-xs text-red-500 font-bold">{errors.description.message}</p>}
                     </Field>
 
-                    <Field label="Full Description">
-                        <textarea name="description" rows={4} placeholder="Describe material, fit, styling tips, occasion..." className={textareaCls} />
-                    </Field>
-
-                    <Field label="Category">
-                        <select name="category" className={inputCls} value={category} onChange={e => setCategory(e.target.value)}>
-                            <option value="">Select category</option>
-                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    <Field label="Category *">
+                        <select
+                            {...register('category_id')}
+                            className={[inputCls, errors.category_id ? 'border-red-500' : ''].join(' ')}
+                        >
+                            <option value="">Select category...</option>
+                            {/* In a real app, these should be dynamically fetched from the categories table */}
+                            <option value="11111111-1111-1111-1111-111111111111">Apparel / Women</option>
+                            <option value="22222222-2222-2222-2222-222222222222">Apparel / Men</option>
+                            <option value="33333333-3333-3333-3333-333333333333">Accessories</option>
                         </select>
+                        {errors.category_id && <p className="text-xs text-red-500 font-bold">{errors.category_id.message}</p>}
                     </Field>
+                </Section>
 
-                    {/* Tags */}
-                    <Field label="Tags" hint="Up to 10 tags for search and discovery.">
-                        <div className="flex gap-2">
-                            <input
-                                value={tagInput}
-                                onChange={e => setTagInput(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-                                placeholder="e.g. summer, floral..."
-                                className={inputCls}
-                            />
-                            <button type="button" onClick={addTag} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-sm font-bold transition-opacity hover:opacity-80">Add</button>
-                        </div>
-                        {tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {tags.map(t => (
-                                    <span key={t} className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-3 py-1.5 rounded-full font-medium">
-                                        #{t}
-                                        <button type="button" onClick={() => setTags(prev => prev.filter(x => x !== t))}>
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </span>
-                                ))}
+                {/* ── 3. Variants (SKUs) ── */}
+                <Section icon={<Box className="w-4 h-4" />} title="Variants (SKUs)">
+                    <div className="space-y-4">
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 relative">
+                                {fields.length > 1 && (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => remove(index)}
+                                        className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Field label="Variant Name *">
+                                        <input
+                                            {...register(`variants.${index}.name`)}
+                                            placeholder="e.g. Red / Medium"
+                                            className={inputCls}
+                                        />
+                                        {errors.variants?.[index]?.name && <p className="text-xs text-red-500 font-bold">{errors.variants[index].name.message}</p>}
+                                    </Field>
+
+                                    <Field label="SKU (Optional)">
+                                        <input
+                                            {...register(`variants.${index}.sku`)}
+                                            placeholder="e.g. TSHIRT-RED-M"
+                                            className={inputCls}
+                                        />
+                                    </Field>
+
+                                    <Field label="Price (TL) *">
+                                        <input
+                                            {...register(`variants.${index}.price`)}
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            className={inputCls}
+                                        />
+                                        {errors.variants?.[index]?.price && <p className="text-xs text-red-500 font-bold">{errors.variants[index].price.message}</p>}
+                                    </Field>
+
+                                    <Field label="Stock Quantity *">
+                                        <input
+                                            {...register(`variants.${index}.stock_quantity`)}
+                                            type="number"
+                                            min="0"
+                                            className={inputCls}
+                                        />
+                                        {errors.variants?.[index]?.stock_quantity && <p className="text-xs text-red-500 font-bold">{errors.variants[index].stock_quantity.message}</p>}
+                                    </Field>
+                                </div>
                             </div>
-                        )}
-                        {/* Hidden input for tags */}
-                        <input type="hidden" name="tags" value={JSON.stringify(tags)} />
-                    </Field>
-                </Section>
+                        ))}
 
-                {/* ── 3. Pricing ── */}
-                <Section icon={<Tag className="w-4 h-4" />} title="Pricing & Stock">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Price (TL) *">
-                            <input name="price" type="number" step="0.01" min="0" required placeholder="e.g. 499" className={inputCls} />
-                        </Field>
-                        <Field label="Original Price (TL)" hint="Set higher to show sale badge.">
-                            <input name="original_price" type="number" step="0.01" min="0" placeholder="e.g. 899" className={inputCls} />
-                        </Field>
+                        <button
+                            type="button"
+                            onClick={() => append({ name: '', price: 0, stock_quantity: 0, sku: '' })}
+                            className="w-full py-3 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-500 dark:text-slate-400 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Plus className="w-4 h-4" /> Add Another Variant
+                        </button>
                     </div>
-                    <Field label="Stock Quantity">
-                        <input name="stock" type="number" min="0" defaultValue={1} className={inputCls} />
-                    </Field>
-                </Section>
-
-                {/* ── 4. Variants ── */}
-                <Section icon={<Ruler className="w-4 h-4" />} title="Sizes & Colors">
-                    <Field label="Available Sizes" hint="Click to toggle available sizes.">
-                        <div className="flex flex-wrap gap-2">
-                            {PRESET_SIZES.map(s => (
-                                <button
-                                    key={s} type="button"
-                                    onClick={() => toggleSize(s)}
-                                    className={[
-                                        'min-w-[3rem] px-3 py-2 rounded-xl border text-sm font-semibold transition-all',
-                                        selectedSizes.includes(s)
-                                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-                                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-400',
-                                    ].join(' ')}
-                                >{s}</button>
-                            ))}
-                        </div>
-                        <input type="hidden" name="sizes" value={JSON.stringify(selectedSizes)} />
-                    </Field>
-
-                    <Field label="Available Colors">
-                        <div className="flex flex-wrap gap-3">
-                            {PRESET_COLORS.map(c => (
-                                <button
-                                    key={c.name} type="button" title={c.name}
-                                    onClick={() => toggleColor(c)}
-                                    className={[
-                                        'w-8 h-8 rounded-full border-2 transition-all hover:scale-110',
-                                        selectedColors.find(x => x.name === c.name)
-                                            ? 'border-slate-900 dark:border-white scale-110 ring-2 ring-slate-900 dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-slate-950'
-                                            : 'border-slate-300 dark:border-slate-600',
-                                    ].join(' ')}
-                                    style={{ backgroundColor: c.hex }}
-                                />
-                            ))}
-                        </div>
-                        <input type="hidden" name="colors" value={JSON.stringify(selectedColors)} />
-                    </Field>
                 </Section>
 
 

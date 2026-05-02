@@ -6,36 +6,41 @@ export default async function VendorDashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: store } = await supabase
-        .from('stores')
+    const { data: vendor } = await supabase
+        .from('vendors')
         .select('*')
         .eq('owner_id', user?.id)
         .limit(1)
         .maybeSingle()
 
-    if (!store) {
+    if (!vendor) {
         return <EmptyStoreState />
     }
 
     const { count: productCount } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
-        .eq('store_id', store.id)
+        .eq('vendor_id', vendor.id)
 
     const { count: orderCount } = await supabase
-        .from('orders')
+        .from('vendor_orders')
         .select('*', { count: 'exact', head: true })
-        .eq('store_id', store.id)
+        .eq('vendor_id', vendor.id)
 
     const { data: recentOrders } = await supabase
-        .from('orders')
-        .select('id, created_at, total_amount, status')
-        .eq('store_id', store.id)
+        .from('vendor_orders')
+        .select('id, created_at, subtotal, status')
+        .eq('vendor_id', vendor.id)
         .order('created_at', { ascending: false })
         .limit(5)
 
-    const totalRevenue = recentOrders?.reduce(
-        (sum, o) => sum + Number(o.total_amount || 0), 0
+    const { data: allOrders } = await supabase
+        .from('vendor_orders')
+        .select('subtotal, status')
+        .eq('vendor_id', vendor.id)
+
+    const totalRevenue = allOrders?.reduce(
+        (sum, o) => o.status !== 'cancelled' ? sum + Number(o.subtotal || 0) : sum, 0
     ) || 0
 
     const statusColors: Record<string, string> = {
@@ -57,10 +62,10 @@ export default async function VendorDashboardPage() {
                 </div>
                 <div className="h-12 flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
-                        {store.name?.[0]?.toUpperCase() || 'V'}
+                        {vendor.name?.[0]?.toUpperCase() || 'V'}
                     </div>
                     <div className="hidden sm:block text-sm">
-                        <p className="font-bold">{store.name}</p>
+                        <p className="font-bold">{vendor.name}</p>
                         <p className="text-slate-500 text-xs">Vendor</p>
                     </div>
                 </div>
@@ -127,7 +132,7 @@ export default async function VendorDashboardPage() {
                                 <p className="text-xs text-slate-400">Update your store details</p>
                             </div>
                         </Link>
-                        <a href={`/stores/${store.slug}`} target="_blank" className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
+                        <a href={`/stores/${vendor.slug}`} target="_blank" className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group">
                             <div className="w-10 h-10 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center">
                                 <span className="material-symbols-outlined !text-[20px]">storefront</span>
                             </div>
@@ -166,7 +171,7 @@ export default async function VendorDashboardPage() {
                                     </div>
                                     <div className="text-right">
                                         <p className="font-black text-sm text-slate-900 dark:text-white">
-                                            {Number(order.total_amount || 0).toLocaleString('en-US')} TL
+                                            {Number(order.subtotal || 0).toLocaleString('en-US')} TL
                                         </p>
                                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full capitalize ${statusColors[order.status] || 'bg-slate-100 text-slate-500'}`}>
                                             {order.status || 'pending'}

@@ -88,8 +88,8 @@ export async function updateSession(request: NextRequest) {
             return NextResponse.redirect(url)
         }
 
-        // Vendor guard
-        if (pathname.startsWith('/dashboard') && userRole !== 'vendor') {
+        // Vendor guard (allow admins to pass)
+        if (pathname.startsWith('/dashboard') && userRole !== 'vendor' && userRole !== 'admin') {
             url.pathname = '/vendor-apply'
             return NextResponse.redirect(url)
         }

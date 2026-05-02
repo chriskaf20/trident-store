@@ -6,8 +6,10 @@ import { useCartStore } from '@/lib/store'
 
 interface QuickAddButtonProps {
     product: {
-        id: string
+        variantId: string
+        productId: string
         name: string
+        productName: string
         price: number
         image: string
         vendorId: string

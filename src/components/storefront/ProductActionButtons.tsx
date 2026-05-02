@@ -1,14 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Minus, ShoppingCart, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useCartStore } from '@/lib/store'
 import { showToast } from '@/components/ui/Toast'
 
 interface Product {
-    id: string
-    name: string
+    variantId: string
+    productId: string
+    name: string        // variant name e.g. "Red / XL"
+    productName: string // parent product name
     price: number
     image: string
     vendorId: string
@@ -30,6 +33,7 @@ export function ProductActionButtons({
     hasSizes = false,
 }: ProductActionButtonsProps) {
     const [quantity, setQuantity] = useState(1)
+    const router = useRouter()
     const addItem = useCartStore((state) => state.addItem)
 
     const validate = (): boolean => {
@@ -49,8 +53,7 @@ export function ProductActionButtons({
     const handleBuyNow = () => {
         if (!validate()) return
         addItem({ ...product, quantity })
-        // Open cart drawer by dispatching event
-        window.dispatchEvent(new CustomEvent('trident:open-cart'))
+        router.push('/checkout')
     }
 
     const isOutOfStock = product.stock === 0

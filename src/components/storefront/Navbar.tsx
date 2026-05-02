@@ -8,12 +8,12 @@ import { CartDrawer } from "./CartDrawer";
 import { FilterDrawer } from "./FilterDrawer";
 import { createClient } from "@/lib/supabase/client";
 
-export function Navbar() {
+export function Navbar({ initialUser = null, initialProfile = null }: { initialUser?: any, initialProfile?: any }) {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
-    const [userProfile, setUserProfile] = useState<any>(null);
+    const [user, setUser] = useState<any>(initialUser);
+    const [userProfile, setUserProfile] = useState<any>(initialProfile);
     const [mounted, setMounted] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const cartCount = useCartStore((state) => state.cartCount());
@@ -24,24 +24,20 @@ export function Navbar() {
     }, []);
 
     useEffect(() => {
-        const getUser = async () => {
-            const { data } = await supabase.auth.getUser();
-            setUser(data.user);
-            if (data.user) {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
+            
+            if (currentUser) {
                 const { data: profileData } = await supabase
                     .from('profiles')
                     .select('role')
-                    .eq('id', data.user.id)
+                    .eq('id', currentUser.id)
                     .single()
                 setUserProfile(profileData)
             } else {
                 setUserProfile(null)
             }
-        };
-        getUser();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
         });
 
         return () => subscription.unsubscribe();
